@@ -112,13 +112,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\utente\source\repos\Computer Graphics Project\Computer Graphics Project\headers;C:\Users\utente\Documents\Visual Studio 2017\Libraries\glm;C:\Users\utente\Documents\Visual Studio 2017\Libraries\glfw-3.3.6.bin.WIN64\include;C:\VulkanSDK\1.3.204.1\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.\headers;C:\VulkanSDK\1.3.204.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\utente\Documents\Visual Studio 2017\Libraries\glfw-3.3.6.bin.WIN64\lib-vc2015;C:\VulkanSDK\1.3.204.1\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>.\lib;C:\VulkanSDK\1.3.204.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
