@@ -15,6 +15,71 @@ struct UniformBufferObject {
 	alignas(16) glm::mat4 model;
 };
 
+struct CubicTexture {
+
+};
+
+struct Skybox {
+	Model model;
+	Texture texture;
+	Pipeline pipeline;
+	DescriptorSet DS;
+	DescriptorSetLayout DSL;
+	UniformBufferObject ubo;
+
+	BaseProject *baseProject;
+
+	void init(BaseProject *bp, DescriptorSetLayout *global);
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, DescriptorSet& global);
+	void cleanup();
+};
+
+void Skybox::cleanup() {
+	DS.cleanup();
+	model.cleanup();
+	texture.cleanup();
+	pipeline.cleanup();
+	DSL.cleanup();
+}
+
+void Skybox::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, DescriptorSet& global) {
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.graphicsPipeline);
+	VkBuffer vertexBuffersSkybox[] = { model.vertexBuffer };
+	VkDeviceSize offsetsSkybox[] = { 0 };
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffersSkybox, offsetsSkybox);
+	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindDescriptorSets(commandBuffer,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		pipeline.pipelineLayout, 0, 1, &global.descriptorSets[currentImage],
+		0, nullptr
+	);
+	vkCmdBindDescriptorSets(commandBuffer,
+		VK_PIPELINE_BIND_POINT_GRAPHICS,
+		pipeline.pipelineLayout, 1, 1, &DS.descriptorSets[currentImage],
+		0, nullptr
+	);
+	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+}
+
+void Skybox::init(BaseProject *bp, DescriptorSetLayout *global) {
+	baseProject = bp;
+
+	DSL.init(baseProject, {
+		{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
+		{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
+	});
+
+	pipeline.init(baseProject, "shaders/skyboxVert.spv", "shaders/skyboxFrag.spv", { global, &DSL });
+	model.init(baseProject, MODEL_PATH + "skybox_cube.obj");
+	texture.init(baseProject, TEXTURE_PATH + "skybox.png");
+
+	DS.init(baseProject, &DSL, {
+		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+		{1, TEXTURE, 0, &texture}
+		});
+
+	ubo.model = glm::scale(glm::mat4(1.0f), glm::vec3(50, 50, 50));
+}
 
 // MAIN ! 
 class MyProject : public BaseProject {
@@ -26,19 +91,21 @@ class MyProject : public BaseProject {
 		glm::vec3 CamPos = glm::vec3(0.0f, 0.5f, 5.0f);
 
 	// Descriptor Layouts [what will be passed to the shaders]
-	DescriptorSetLayout DSLglobal;
-
-	DescriptorSetLayout DSLobj; //Object descriptor
+	DescriptorSetLayout DSL_global;
+	DescriptorSetLayout DSL_museum; //Object descriptor
+	DescriptorSetLayout DSL_skybox;
 
 	// Pipelines [Shader couples]
-	Pipeline P1;
+	Pipeline museumPipeline;
 
 	// Models, textures and Descriptors (values assigned to the uniforms)
 	Model M_Museum;
 	Texture T_Museum;
-	DescriptorSet DS_Museum; //Instance of DSLobj
+	DescriptorSet DS_Museum; //Instance of DSL_museum
 
-	DescriptorSet DS_global;
+	DescriptorSet DS_global; // used for cam and light points
+
+	Skybox skybox;
 	
 	// Here you set the main application parameters
 	void setWindowParameters() {
@@ -49,15 +116,15 @@ class MyProject : public BaseProject {
 		initialBackgroundColor = {0.0f, 0.0f, 0.0f, 1.0f};
 		
 		// Descriptor pool sizes  !!!!
-		uniformBlocksInPool = 2;
-		texturesInPool = 1;
-		setsInPool = 2;
+		uniformBlocksInPool = 4;
+		texturesInPool = 2;
+		setsInPool = 3;
 	}
 	
 	// Here you load and setup all your Vulkan objects
 	void localInit() {
 		// Descriptor Layouts [what will be passed to the shaders]
-		DSLobj.init(this, {
+		DSL_museum.init(this, {
 					// this array contains the binding:
 					// first  element : the binding number
 					// second element : the time of element (buffer or texture)
@@ -66,19 +133,19 @@ class MyProject : public BaseProject {
 					{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
 				  });
 
-		DSLglobal.init(this, {
+		DSL_global.init(this, {
 			{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS},
 			});
 
 		// Pipelines [Shader couples]
 		// The last array, is a vector of pointer to the layouts of the sets that will
 		// be used in this pipeline. The first element will be set 0, and so on..
-		P1.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSLglobal, &DSLobj});
+		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_global, &DSL_museum});
 
 		// Models, textures and Descriptors (values assigned to the uniforms)
 		M_Museum.init(this, MODEL_PATH + "museumTri.obj");
 		T_Museum.init(this, TEXTURE_PATH + "wall.jpg");
-		DS_Museum.init(this, &DSLobj, {
+		DS_Museum.init(this, &DSL_museum, {
 		// the second parameter, is a pointer to the Uniform Set Layout of this set
 		// the last parameter is an array, with one element per binding of the set.
 		// first  elmenet : the binding number
@@ -89,9 +156,11 @@ class MyProject : public BaseProject {
 					{1, TEXTURE, 0, &T_Museum}
 				});
 
-		DS_global.init(this, &DSLglobal, {
+		DS_global.init(this, &DSL_global, {
 						{0, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
 			});
+
+		skybox.init(this, &DSL_global);
 	}
 
 	// Here you destroy all the objects you created!		
@@ -102,9 +171,10 @@ class MyProject : public BaseProject {
 
 		DS_global.cleanup();
 
-		P1.cleanup();
-		DSLglobal.cleanup();
-		DSLobj.cleanup();
+		museumPipeline.cleanup();
+		DSL_global.cleanup();
+		DSL_museum.cleanup();
+		skybox.cleanup();
 	}
 	
 	// Here it is the creation of the command buffer:
@@ -113,12 +183,7 @@ class MyProject : public BaseProject {
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage) {
 				
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-				P1.graphicsPipeline);
-
-		vkCmdBindDescriptorSets(commandBuffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			P1.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
-			0, nullptr);
+				museumPipeline.graphicsPipeline);
 				
 		VkBuffer vertexBuffers[] = {M_Museum.vertexBuffer};
 		// property .vertexBuffer of models, contains the VkBuffer handle to its vertex buffer
@@ -131,13 +196,21 @@ class MyProject : public BaseProject {
 		// property .pipelineLayout of a pipeline contains its layout.
 		// property .descriptorSets of a descriptor set contains its elements.
 		vkCmdBindDescriptorSets(commandBuffer,
-						VK_PIPELINE_BIND_POINT_GRAPHICS,
-						P1.pipelineLayout, 1, 1, &DS_Museum.descriptorSets[currentImage], //(?)
-						0, nullptr);
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			museumPipeline.pipelineLayout, 1, 1, &DS_Museum.descriptorSets[currentImage], //(?)
+			0, nullptr);
+
+		vkCmdBindDescriptorSets(commandBuffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			museumPipeline.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
+			0, nullptr);
 						
 		// property .indices.size() of models, contains the number of triangles * 3 of the mesh.
 		vkCmdDrawIndexed(commandBuffer,
 					static_cast<uint32_t>(M_Museum.indices.size()), 1, 0, 0, 0);
+
+		// skybox
+		skybox.populateCommandBuffer(commandBuffer, currentImage, DS_global);
 	}
 
 	// Here is where you update the uniforms.
@@ -218,11 +291,10 @@ class MyProject : public BaseProject {
 
 		glm::mat4 Prj = glm::perspective(glm::radians(45.0f),
 			swapChainExtent.width / (float)swapChainExtent.height,
-			0.1f, 50.0f);
+			0.1f, 100.0f);
 		Prj[1][1] *= -1;
 					
 		UniformBufferObject ubo{};
-		ubo.model =glm::mat4(1.0f);
 		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, -3.0f));
 		
 		
@@ -244,7 +316,13 @@ class MyProject : public BaseProject {
 			sizeof(gubo), 0, &data);
 		memcpy(data, &gubo, sizeof(gubo));
 		vkUnmapMemory(device, DS_global.uniformBuffersMemory[0][currentImage]);
-	}	
+
+		// skybox
+		vkMapMemory(device, skybox.DS.uniformBuffersMemory[0][currentImage], 0,
+			sizeof(skybox.ubo), 0, &data);
+		memcpy(data, &skybox.ubo, sizeof(skybox.ubo));
+		vkUnmapMemory(device, skybox.DS.uniformBuffersMemory[0][currentImage]);
+	}
 };
 
 // This is the main: probably you do not need to touch this!
