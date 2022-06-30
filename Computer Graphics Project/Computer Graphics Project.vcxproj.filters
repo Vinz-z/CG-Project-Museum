@@ -18,6 +18,9 @@
     <ClInclude Include="MyProject.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Picture.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MyProject.cpp">
