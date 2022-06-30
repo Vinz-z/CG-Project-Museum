@@ -127,7 +127,7 @@ class MyProject : public BaseProject {
 	// Here you list all the Vulkan objects you need:
 	// Camera
 		glm::vec3 CamAng = glm::vec3(0.0f);
-		glm::vec3 CamPos = glm::vec3(0.0f, 0.5f, 7.5f);
+		glm::vec3 CamPos = glm::vec3(-0.1f, 0.75f, 7.5f);
 
 	// Descriptor Layouts [what will be passed to the shaders]
 	DescriptorSetLayout DSL_global;
@@ -149,6 +149,10 @@ class MyProject : public BaseProject {
 
 	Picture Sunday;
 	Picture StarringNight;
+	Picture VanGogh;
+	Picture Munch_Scream;
+	Picture Guernica;
+	Picture Statue;
 
 	Skybox skybox;
 	
@@ -161,9 +165,9 @@ class MyProject : public BaseProject {
 		initialBackgroundColor = {0.0f, 0.0f, 0.0f, 1.0f};
 		
 		// Descriptor pool sizes  !!!!
-		uniformBlocksInPool = 4;
-		texturesInPool = 2;
-		setsInPool = 5;
+		uniformBlocksInPool = 2;
+		texturesInPool = 7;
+		setsInPool = texturesInPool+2;
 	}
 	
 	// Here you load and setup all your Vulkan objects
@@ -212,8 +216,12 @@ class MyProject : public BaseProject {
 		});
 
 
-		Sunday.init(&DSL_pic, this, MODEL_PATH + "a_sunday_afternoon.obj", TEXTURE_PATH + "a_sunday_afternoon.png");
-		StarringNight.init(&DSL_pic, this, MODEL_PATH + "starringNight.obj", TEXTURE_PATH + "starringNight.png");
+		initializePic(Sunday, &DSLpic, this, MODEL_PATH + "a_sunday_afternoon.obj", TEXTURE_PATH + "a_sunday_afternoon.png");
+		initializePic(StarringNight, &DSLpic, this, MODEL_PATH + "starringNight.obj", TEXTURE_PATH + "starringNight.png");
+		initializePic(VanGogh, &DSLpic, this, MODEL_PATH + "VanGogh.obj", TEXTURE_PATH + "VanGogh.png");
+		initializePic(Munch_Scream, &DSLpic, this, MODEL_PATH + "Munch_Scream.obj", TEXTURE_PATH + "Munch_Scream.png");
+		initializePic(Guernica, &DSLpic, this, MODEL_PATH + "Guernica.obj", TEXTURE_PATH + "Guernica.png");
+		initializePic(Statue, &DSLpic, this, MODEL_PATH + "Statue.obj", TEXTURE_PATH + "Statue.jpg");
 
 		skybox.init(this, &DSL_global);
 
@@ -229,8 +237,12 @@ class MyProject : public BaseProject {
 		T_Museum.cleanup();
 		M_Museum.cleanup();
 
-		Sunday.cleanup();
-		StarringNight.cleanup();
+		cleanPicture(Sunday);
+		cleanPicture(StarringNight);
+		cleanPicture(VanGogh);
+		cleanPicture(Munch_Scream);
+		cleanPicture(Guernica);
+		cleanPicture(Statue);
 
 		DS_global.cleanup();
 
@@ -288,11 +300,12 @@ class MyProject : public BaseProject {
 			picturePipeline.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
 			0, nullptr);
 
-		// pictures
-		Sunday.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
-		StarringNight.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
-
-// --------------------------------------------
+		populatingBuffer(Sunday, commandBuffer, currentImage, PPictures);
+		populatingBuffer(StarringNight, commandBuffer, currentImage, PPictures);
+		populatingBuffer(VanGogh, commandBuffer, currentImage, PPictures);
+		populatingBuffer(Munch_Scream, commandBuffer, currentImage, PPictures);
+		populatingBuffer(Guernica, commandBuffer, currentImage, PPictures);
+		populatingBuffer(Statue, commandBuffer, currentImage, PPictures);
 
 		// skybox
 		skybox.populateCommandBuffer(commandBuffer, currentImage, DS_global);
@@ -389,19 +402,61 @@ class MyProject : public BaseProject {
 		vkUnmapMemory(device, DS_Museum.uniformBuffersMemory[0][currentImage]);
 
 
+		//Updating the picture
+		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 6.0f))*
 		// pictures ubo -> da fare una volta tanto non cambiano nel tempo
 		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 6.1f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.06f,0.06f,0.06f));
+
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.04f,0.04f,0.04f));
 		copyPicInMemory(Sunday, currentImage, ubo, data, device);
 
+		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 3.4f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.04f, 0.04f, 0.04f));
 		// gubo
 		vkMapMemory(device, DS_global.uniformBuffersMemory[0][currentImage], 0, sizeof(gubo), 0, &data);
 		memcpy(data, &gubo, sizeof(gubo));
 		vkUnmapMemory(device, DS_global.uniformBuffersMemory[0][currentImage]);
 
+		copyPicInMemory(StarringNight, currentImage, ubo, data, device);
+
+		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.88f, 2.18f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
+
+		copyPicInMemory(VanGogh, currentImage, ubo, data, device);
+		
+		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.88f, 1.175f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.023f, 0.023f, 0.023f));
+
+		copyPicInMemory(Munch_Scream, currentImage, ubo, data, device);
+		
+		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.88f, -0.22f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.095f, 0.095f, 0.095f));
+
+		copyPicInMemory(Guernica, currentImage, ubo, data, device);
+
+		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.05f, -0.30f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f));
+
+		copyPicInMemory(Statue, currentImage, ubo, data, device);
+
+	}	
 		// skybox -> ma se tanto è costante una volta che lo ho copiato non rimane li per sempre?
 		vkMapMemory(device, skybox.DS.uniformBuffersMemory[0][currentImage], 0, sizeof(skybox.ubo), 0, &data);
 		memcpy(data, &skybox.ubo, sizeof(skybox.ubo));
