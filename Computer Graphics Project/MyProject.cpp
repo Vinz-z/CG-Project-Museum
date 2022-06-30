@@ -63,7 +63,7 @@ class MyProject : public BaseProject {
 	// Here you list all the Vulkan objects you need:
 	// Camera
 		glm::vec3 CamAng = glm::vec3(0.0f);
-		glm::vec3 CamPos = glm::vec3(0.0f, 0.5f, 7.5f);
+		glm::vec3 CamPos = glm::vec3(-0.1f, 0.75f, 7.5f);
 
 	// Descriptor Layouts [what will be passed to the shaders]
 	DescriptorSetLayout DSLglobal;
@@ -84,6 +84,9 @@ class MyProject : public BaseProject {
 
 	Picture Sunday;
 	Picture StarringNight;
+	Picture VanGogh;
+	Picture Munch_Scream;
+	Picture Guernica;
 
 	DescriptorSet DS_global;
 	
@@ -97,8 +100,8 @@ class MyProject : public BaseProject {
 		
 		// Descriptor pool sizes  !!!!
 		uniformBlocksInPool = 2;
-		texturesInPool = 3;
-		setsInPool = 4;
+		texturesInPool = 6;
+		setsInPool = texturesInPool+1;
 	}
 	
 	// Here you load and setup all your Vulkan objects
@@ -149,6 +152,9 @@ class MyProject : public BaseProject {
 
 		initializePic(Sunday, &DSLpic, this, MODEL_PATH + "a_sunday_afternoon.obj", TEXTURE_PATH + "a_sunday_afternoon.png");
 		initializePic(StarringNight, &DSLpic, this, MODEL_PATH + "starringNight.obj", TEXTURE_PATH + "starringNight.png");
+		initializePic(VanGogh, &DSLpic, this, MODEL_PATH + "VanGogh.obj", TEXTURE_PATH + "VanGogh.png");
+		initializePic(Munch_Scream, &DSLpic, this, MODEL_PATH + "Munch_Scream.obj", TEXTURE_PATH + "Munch_Scream.png");
+		initializePic(Guernica, &DSLpic, this, MODEL_PATH + "Guernica.obj", TEXTURE_PATH + "Guernica.png");
 
 
 		DS_global.init(this, &DSLglobal, {
@@ -164,6 +170,9 @@ class MyProject : public BaseProject {
 
 		cleanPicture(Sunday);
 		cleanPicture(StarringNight);
+		cleanPicture(VanGogh);
+		cleanPicture(Munch_Scream);
+		cleanPicture(Guernica);
 
 		DS_global.cleanup();
 
@@ -218,6 +227,9 @@ class MyProject : public BaseProject {
 
 		populatingBuffer(Sunday, commandBuffer, currentImage, PPictures);
 		populatingBuffer(StarringNight, commandBuffer, currentImage, PPictures);
+		populatingBuffer(VanGogh, commandBuffer, currentImage, PPictures);
+		populatingBuffer(Munch_Scream, commandBuffer, currentImage, PPictures);
+		populatingBuffer(Guernica, commandBuffer, currentImage, PPictures);
 
 	}
 
@@ -328,21 +340,46 @@ class MyProject : public BaseProject {
 
 
 		//Updating the picture
-		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 6.1f))*
+		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 6.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(0.04f,0.04f,0.04f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.06f,0.06f,0.06f));
 
 		copyPicInMemory(Sunday, currentImage, ubo, data, device);
 
-		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 4.0f))*
+		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 3.4f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.04f, 0.04f, 0.04f));
 
 		copyPicInMemory(StarringNight, currentImage, ubo, data, device);
+
+		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.88f, 2.18f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.02f, 0.02f, 0.02f));
+
+		copyPicInMemory(VanGogh, currentImage, ubo, data, device);
+		
+		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.88f, 1.175f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.023f, 0.023f, 0.023f));
+
+		copyPicInMemory(Munch_Scream, currentImage, ubo, data, device);
+		
+		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.88f, -0.22f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.095f, 0.095f, 0.095f));
+
+		copyPicInMemory(Guernica, currentImage, ubo, data, device);
+
 	}	
 };
 
