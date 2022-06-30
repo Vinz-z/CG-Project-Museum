@@ -87,6 +87,7 @@ class MyProject : public BaseProject {
 	Picture VanGogh;
 	Picture Munch_Scream;
 	Picture Guernica;
+	Picture Statue;
 
 	DescriptorSet DS_global;
 	
@@ -100,7 +101,7 @@ class MyProject : public BaseProject {
 		
 		// Descriptor pool sizes  !!!!
 		uniformBlocksInPool = 2;
-		texturesInPool = 6;
+		texturesInPool = 7;
 		setsInPool = texturesInPool+1;
 	}
 	
@@ -155,6 +156,7 @@ class MyProject : public BaseProject {
 		initializePic(VanGogh, &DSLpic, this, MODEL_PATH + "VanGogh.obj", TEXTURE_PATH + "VanGogh.png");
 		initializePic(Munch_Scream, &DSLpic, this, MODEL_PATH + "Munch_Scream.obj", TEXTURE_PATH + "Munch_Scream.png");
 		initializePic(Guernica, &DSLpic, this, MODEL_PATH + "Guernica.obj", TEXTURE_PATH + "Guernica.png");
+		initializePic(Statue, &DSLpic, this, MODEL_PATH + "Statue.obj", TEXTURE_PATH + "Statue.jpg");
 
 
 		DS_global.init(this, &DSLglobal, {
@@ -173,6 +175,7 @@ class MyProject : public BaseProject {
 		cleanPicture(VanGogh);
 		cleanPicture(Munch_Scream);
 		cleanPicture(Guernica);
+		cleanPicture(Statue);
 
 		DS_global.cleanup();
 
@@ -230,6 +233,7 @@ class MyProject : public BaseProject {
 		populatingBuffer(VanGogh, commandBuffer, currentImage, PPictures);
 		populatingBuffer(Munch_Scream, commandBuffer, currentImage, PPictures);
 		populatingBuffer(Guernica, commandBuffer, currentImage, PPictures);
+		populatingBuffer(Statue, commandBuffer, currentImage, PPictures);
 
 	}
 
@@ -379,6 +383,12 @@ class MyProject : public BaseProject {
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.095f, 0.095f, 0.095f));
 
 		copyPicInMemory(Guernica, currentImage, ubo, data, device);
+
+		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.05f, -0.30f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f));
+
+		copyPicInMemory(Statue, currentImage, ubo, data, device);
 
 	}	
 };
