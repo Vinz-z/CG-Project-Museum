@@ -19,32 +19,37 @@ struct Picture {
 	Model model;
 	Texture texture;
 	DescriptorSet descSet;
+
+	void cleanup();
+	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString);
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
 };
 
 
-void cleanPicture(Picture pic){
-	pic.descSet.cleanup();
-	pic.texture.cleanup();
-	pic.model.cleanup();
-	
+void Picture::cleanup(){
+	descSet.cleanup();
+	texture.cleanup();
+	model.cleanup();
 }
 
-void initializePic(Picture &picture, DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString) {
-	picture.model.init(bs, modelString);
-	picture.texture.init(bs, textureString);
-	picture.descSet.init(bs, DSL, {
-						{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-						{1, TEXTURE, 0, &picture.texture},
-		});
+void Picture::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString) {
+	model.init(bs, modelString);
+	texture.init(bs, textureString);
+	descSet.init(bs, DSL, {
+		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+		{1, TEXTURE, 0, &texture}
+	});
 }
 
-void populatingBuffer(Picture picture, VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
-	VkBuffer vertexBuffers[] = { picture.model.vertexBuffer };
+void Picture::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
+	VkBuffer vertexBuffers[] = { model.vertexBuffer };
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, picture.model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipelineLayout, 1, 1, &picture.descSet.descriptorSets[currentImage], 0, nullptr);
-	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(picture.model.indices.size()), 1, 0, 0, 0);
+	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
+		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage], 
+		0, nullptr);
+	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 }
 
 void copyPicInMemory(Picture picture, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
@@ -52,9 +57,6 @@ void copyPicInMemory(Picture picture, int currentImage, UniformBufferObject ubo,
 		sizeof(ubo), 0, &data);
 	memcpy(data, &ubo, sizeof(ubo));
 	vkUnmapMemory(device, picture.descSet.uniformBuffersMemory[0][currentImage]);
-};
-struct CubicTexture {
-
 };
 
 struct Skybox {
@@ -119,9 +121,6 @@ void Skybox::init(BaseProject *bp, DescriptorSetLayout *global) {
 	ubo.model = glm::scale(glm::mat4(1.0f), glm::vec3(50, 50, 50));
 }
 
-
-
-// MAIN ! 
 class MyProject : public BaseProject {
 
 	protected:
@@ -135,12 +134,11 @@ class MyProject : public BaseProject {
 	DescriptorSetLayout DSL_museum; //Object descriptor
 	DescriptorSetLayout DSL_skybox;
 
-	DescriptorSetLayout DSLpic;
+	DescriptorSetLayout DSL_pic;
 
-	// Pipelines [Shader couples]
+	// Pipelines
 	Pipeline museumPipeline;
-
-	Pipeline PPictures;
+	Pipeline picturePipeline;
 
 	// Models, textures and Descriptors (values assigned to the uniforms)
 	Model M_Museum;
@@ -152,7 +150,6 @@ class MyProject : public BaseProject {
 	Picture Sunday;
 	Picture StarringNight;
 
-	DescriptorSet DS_global;
 	Skybox skybox;
 	
 	// Here you set the main application parameters
@@ -166,7 +163,7 @@ class MyProject : public BaseProject {
 		// Descriptor pool sizes  !!!!
 		uniformBlocksInPool = 4;
 		texturesInPool = 2;
-		setsInPool = 3;
+		setsInPool = 5;
 	}
 	
 	// Here you load and setup all your Vulkan objects
@@ -181,7 +178,7 @@ class MyProject : public BaseProject {
 					{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
 				  });
 		
-		DSLpic.init(this, {
+		DSL_pic.init(this, {
 					// this array contains the binding:
 					// first  element : the binding number
 					// second element : the time of element (buffer or texture)
@@ -190,15 +187,14 @@ class MyProject : public BaseProject {
 					{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
 				  });
 
-		DSLglobal.init(this, {
+		DSL_global.init(this, {
 			{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS},
 			});
 
 		// Pipelines [Shader couples]
 		// The last array, is a vector of pointer to the layouts of the sets that will
 		// be used in this pipeline. The first element will be set 0, and so on..
-		P1.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSLglobal, &DSLobj});
-		PPictures.init(this, "shaders/picture_vert.spv", "shaders/picture_frag.spv", { &DSLglobal, &DSLpic });
+		picturePipeline.init(this, "shaders/picture_vert.spv", "shaders/picture_frag.spv", { &DSL_global, &DSL_pic });
 		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_global, &DSL_museum});
 
 		// Models, textures and Descriptors (values assigned to the uniforms)
@@ -211,20 +207,20 @@ class MyProject : public BaseProject {
 		// second element : UNIFORM or TEXTURE (an enum) depending on the type
 		// third  element : only for UNIFORMs, the size of the corresponding C++ object
 		// fourth element : only for TEXTUREs, the pointer to the corresponding texture object
-					{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-					{1, TEXTURE, 0, &T_Museum},
-				});
+			{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+			{1, TEXTURE, 0, &T_Museum},
+		});
 
 
-		initializePic(Sunday, &DSLpic, this, MODEL_PATH + "a_sunday_afternoon.obj", TEXTURE_PATH + "a_sunday_afternoon.png");
-		initializePic(StarringNight, &DSLpic, this, MODEL_PATH + "starringNight.obj", TEXTURE_PATH + "starringNight.png");
-
-
-		DS_global.init(this, &DSLglobal, {
-						{0, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
-			});
+		Sunday.init(&DSL_pic, this, MODEL_PATH + "a_sunday_afternoon.obj", TEXTURE_PATH + "a_sunday_afternoon.png");
+		StarringNight.init(&DSL_pic, this, MODEL_PATH + "starringNight.obj", TEXTURE_PATH + "starringNight.png");
 
 		skybox.init(this, &DSL_global);
+
+		DS_global.init(this, &DSL_global, {
+			{0, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
+		});
+
 	}
 
 	// Here you destroy all the objects you created!		
@@ -233,19 +229,16 @@ class MyProject : public BaseProject {
 		T_Museum.cleanup();
 		M_Museum.cleanup();
 
-		cleanPicture(Sunday);
-		cleanPicture(StarringNight);
+		Sunday.cleanup();
+		StarringNight.cleanup();
 
 		DS_global.cleanup();
 
-		P1.cleanup();
-		PPictures.cleanup();
-		DSLglobal.cleanup();
-		DSLobj.cleanup();
-		DSLpic.cleanup();
 		museumPipeline.cleanup();
+		picturePipeline.cleanup();
 		DSL_global.cleanup();
 		DSL_museum.cleanup();
+		DSL_pic.cleanup();
 		skybox.cleanup();
 	}
 	
@@ -253,16 +246,12 @@ class MyProject : public BaseProject {
 	// You send to the GPU all the objects you want to draw,
 	// with their buffers and textures
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage) {
-				
+		
+// ---------- museum command buffer ----------
+
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-				P1.graphicsPipeline);
-
-		vkCmdBindDescriptorSets(commandBuffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			P1.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
-			0, nullptr);
-
-		//----		
+				museumPipeline.graphicsPipeline);
+	
 		VkBuffer vertexBuffers[] = {M_Museum.vertexBuffer};
 		// property .vertexBuffer of models, contains the VkBuffer handle to its vertex buffer
 		VkDeviceSize offsets[] = {0};
@@ -286,19 +275,24 @@ class MyProject : public BaseProject {
 		vkCmdDrawIndexed(commandBuffer,
 					static_cast<uint32_t>(M_Museum.indices.size()), 1, 0, 0, 0);
 
-		//Pictures
+// --------------------------------------------
+
+// ---------- picture command buffer ----------
+
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			PPictures.graphicsPipeline);
+			picturePipeline.graphicsPipeline);
 
 		//Adding the global set to the second pipeline
 		vkCmdBindDescriptorSets(commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			PPictures.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
+			picturePipeline.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
 			0, nullptr);
 
-		populatingBuffer(Sunday, commandBuffer, currentImage, PPictures);
-		populatingBuffer(StarringNight, commandBuffer, currentImage, PPictures);
+		// pictures
+		Sunday.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		StarringNight.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 
+// --------------------------------------------
 
 		// skybox
 		skybox.populateCommandBuffer(commandBuffer, currentImage, DS_global);
@@ -344,12 +338,6 @@ class MyProject : public BaseProject {
 		if (glfwGetKey(window, GLFW_KEY_DOWN)) {
 			CamAng.x -= deltaT * ROT_SPEED;
 		}
-		if (glfwGetKey(window, GLFW_KEY_Q)) {
-			CamAng.z -= deltaT * ROT_SPEED;
-		}
-		if (glfwGetKey(window, GLFW_KEY_E)) {
-			CamAng.z += deltaT * ROT_SPEED;
-		}
 
 		glm::mat3 CamDir = glm::mat3(glm::rotate(glm::mat4(1.0f), CamAng.y, glm::vec3(0.0f, 1.0f, 0.0f))) *
 			glm::mat3(glm::rotate(glm::mat4(1.0f), CamAng.x, glm::vec3(1.0f, 0.0f, 0.0f))) *
@@ -371,12 +359,6 @@ class MyProject : public BaseProject {
 			CamPos -= MOVE_SPEED * glm::vec3(glm::rotate(glm::mat4(1.0f), CamAng.y,
 				glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec4(0, 0, 1, 1)) * deltaT;
 		}
-		if (glfwGetKey(window, GLFW_KEY_F)) {
-			CamPos -= MOVE_SPEED * glm::vec3(0, 1, 0) * deltaT;
-		}
-		if (glfwGetKey(window, GLFW_KEY_R)) {
-			CamPos += MOVE_SPEED * glm::vec3(0, 1, 0) * deltaT;
-		}
 
 		glm::mat4 CamMat = glm::translate(glm::transpose(glm::mat4(CamDir)), -CamPos);
 
@@ -384,50 +366,44 @@ class MyProject : public BaseProject {
 			swapChainExtent.width / (float)swapChainExtent.height,
 			0.1f, 100.0f);
 		Prj[1][1] *= -1;
-					
+				
+		// meglio creare un ubo per ogni binding così non facciamo casino e li riconosciamo dai nomi
 		UniformBufferObject ubo{};
 		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, 0.0f))*glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 		//Update the Camera
 		GlobalUniformBufferObject gubo{};
-
 		gubo.view = CamMat;
 		gubo.proj = Prj;
-		
 		
 		void* data;
 
 		//Global
-		vkMapMemory(device, DS_global.uniformBuffersMemory[0][currentImage], 0,
-			sizeof(gubo), 0, &data);
+		vkMapMemory(device, DS_global.uniformBuffersMemory[0][currentImage], 0, sizeof(gubo), 0, &data);
 		memcpy(data, &gubo, sizeof(gubo));
 		vkUnmapMemory(device, DS_global.uniformBuffersMemory[0][currentImage]);
 
-		// Here is where you actually update your uniforms
-		vkMapMemory(device, DS_Museum.uniformBuffersMemory[0][currentImage], 0,
-							sizeof(ubo), 0, &data);
+		// museum ubo
+		vkMapMemory(device, DS_Museum.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo), 0, &data);
 		memcpy(data, &ubo, sizeof(ubo));
 		vkUnmapMemory(device, DS_Museum.uniformBuffersMemory[0][currentImage]);
 
 
-		//Updating the picture
+		// pictures ubo -> da fare una volta tanto non cambiano nel tempo
 		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 6.1f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.04f,0.04f,0.04f));
-
 		copyPicInMemory(Sunday, currentImage, ubo, data, device);
 
-		
-		vkMapMemory(device, DS_global.uniformBuffersMemory[0][currentImage], 0,
-			sizeof(gubo), 0, &data);
+		// gubo
+		vkMapMemory(device, DS_global.uniformBuffersMemory[0][currentImage], 0, sizeof(gubo), 0, &data);
 		memcpy(data, &gubo, sizeof(gubo));
 		vkUnmapMemory(device, DS_global.uniformBuffersMemory[0][currentImage]);
 
-		// skybox
-		vkMapMemory(device, skybox.DS.uniformBuffersMemory[0][currentImage], 0,
-			sizeof(skybox.ubo), 0, &data);
+		// skybox -> ma se tanto è costante una volta che lo ho copiato non rimane li per sempre?
+		vkMapMemory(device, skybox.DS.uniformBuffersMemory[0][currentImage], 0, sizeof(skybox.ubo), 0, &data);
 		memcpy(data, &skybox.ubo, sizeof(skybox.ubo));
 		vkUnmapMemory(device, skybox.DS.uniformBuffersMemory[0][currentImage]);
 	}
