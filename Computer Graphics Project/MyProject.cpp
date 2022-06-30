@@ -15,11 +15,45 @@ struct UniformBufferObject {
 	alignas(16) glm::mat4 model;
 };
 
-struct PicturesUniformBufferObject {
-	alignas(16) glm::mat4 model;
-	alignas(16) glm::mat4 view;
-	alignas(16) glm::mat4 proj;
+struct Picture {
+	Model model;
+	Texture texture;
+	DescriptorSet descSet;
 };
+
+
+void cleanPicture(Picture pic){
+	pic.descSet.cleanup();
+	pic.texture.cleanup();
+	pic.model.cleanup();
+	
+}
+
+void initializePic(Picture &picture, DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString) {
+	picture.model.init(bs, modelString);
+	picture.texture.init(bs, textureString);
+	picture.descSet.init(bs, DSL, {
+						{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+						{1, TEXTURE, 0, &picture.texture},
+		});
+}
+
+void populatingBuffer(Picture picture, VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
+	VkBuffer vertexBuffers[] = { picture.model.vertexBuffer };
+	VkDeviceSize offsets[] = { 0 };
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, picture.model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipelineLayout, 1, 1, &picture.descSet.descriptorSets[currentImage], 0, nullptr);
+	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(picture.model.indices.size()), 1, 0, 0, 0);
+}
+
+void copyPicInMemory(Picture picture, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
+	vkMapMemory(device, picture.descSet.uniformBuffersMemory[0][currentImage], 0,
+		sizeof(ubo), 0, &data);
+	memcpy(data, &ubo, sizeof(ubo));
+	vkUnmapMemory(device, picture.descSet.uniformBuffersMemory[0][currentImage]);
+};
+
 
 
 // MAIN ! 
@@ -48,11 +82,8 @@ class MyProject : public BaseProject {
 	Texture T_Museum;
 	DescriptorSet DS_Museum; //Instance of DSLobj
 
-	Model M_P_Sunday;
-	Texture T_P_Sunday;
-	DescriptorSet DS_P_Sunday;
-
-
+	Picture Sunday;
+	Picture StarringNight;
 
 	DescriptorSet DS_global;
 	
@@ -65,9 +96,9 @@ class MyProject : public BaseProject {
 		initialBackgroundColor = {0.0f, 0.0f, 0.0f, 1.0f};
 		
 		// Descriptor pool sizes  !!!!
-		uniformBlocksInPool = 4;
-		texturesInPool = 2;
-		setsInPool = 3;
+		uniformBlocksInPool = 2;
+		texturesInPool = 3;
+		setsInPool = 4;
 	}
 	
 	// Here you load and setup all your Vulkan objects
@@ -115,12 +146,10 @@ class MyProject : public BaseProject {
 					{1, TEXTURE, 0, &T_Museum},
 				});
 
-		M_P_Sunday.init(this, MODEL_PATH + "a_sunday_afternoon.obj");
-		T_P_Sunday.init(this, TEXTURE_PATH + "a_sunday_afternoon.png");
-		DS_P_Sunday.init(this, &DSLpic, {
-						{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-						{1, TEXTURE, 0, &T_P_Sunday},
-			});
+
+		initializePic(Sunday, &DSLpic, this, MODEL_PATH + "a_sunday_afternoon.obj", TEXTURE_PATH + "a_sunday_afternoon.png");
+		initializePic(StarringNight, &DSLpic, this, MODEL_PATH + "starringNight.obj", TEXTURE_PATH + "starringNight.png");
+
 
 		DS_global.init(this, &DSLglobal, {
 						{0, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
@@ -133,9 +162,8 @@ class MyProject : public BaseProject {
 		T_Museum.cleanup();
 		M_Museum.cleanup();
 
-		T_P_Sunday.cleanup();
-		M_P_Sunday.cleanup();
-		DS_P_Sunday.cleanup();
+		cleanPicture(Sunday);
+		cleanPicture(StarringNight);
 
 		DS_global.cleanup();
 
@@ -158,13 +186,6 @@ class MyProject : public BaseProject {
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			P1.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
 			0, nullptr);
-
-		//Adding the global set to the second pipeline
-		vkCmdBindDescriptorSets(commandBuffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			PPictures.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
-			0, nullptr);
-
 
 		//----		
 		VkBuffer vertexBuffers[] = {M_Museum.vertexBuffer};
@@ -189,12 +210,15 @@ class MyProject : public BaseProject {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 			PPictures.graphicsPipeline);
 
-		VkBuffer vertexBuffers2[] = { M_P_Sunday.vertexBuffer };
-		VkDeviceSize offsets2[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers2, offsets2);
-		vkCmdBindIndexBuffer(commandBuffer, M_P_Sunday.indexBuffer, 0,VK_INDEX_TYPE_UINT32);
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, PPictures.pipelineLayout, 1, 1, &DS_P_Sunday.descriptorSets[currentImage],0, nullptr);
-		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(M_P_Sunday.indices.size()), 1, 0, 0, 0);
+		//Adding the global set to the second pipeline
+		vkCmdBindDescriptorSets(commandBuffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			PPictures.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
+			0, nullptr);
+
+		populatingBuffer(Sunday, commandBuffer, currentImage, PPictures);
+		populatingBuffer(StarringNight, commandBuffer, currentImage, PPictures);
+
 	}
 
 	// Here is where you update the uniforms.
@@ -304,21 +328,21 @@ class MyProject : public BaseProject {
 
 
 		//Updating the picture
-		PicturesUniformBufferObject pubo{};
 		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 6.1f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.04f,0.04f,0.04f));
 
+		copyPicInMemory(Sunday, currentImage, ubo, data, device);
 
-		vkMapMemory(device, DS_P_Sunday.uniformBuffersMemory[0][currentImage], 0,
-			sizeof(ubo), 0, &data);
-		memcpy(data, &ubo, sizeof(ubo));
-		vkUnmapMemory(device, DS_P_Sunday.uniformBuffersMemory[0][currentImage]);
+		ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 4.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.04f, 0.04f, 0.04f));
 
-		
-		
+		copyPicInMemory(StarringNight, currentImage, ubo, data, device);
 	}	
 };
 
