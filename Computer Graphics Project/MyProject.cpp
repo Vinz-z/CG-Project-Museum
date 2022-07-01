@@ -162,6 +162,12 @@ class MyProject : public BaseProject {
 	Picture Munch_Scream;
 	Picture Guernica;
 	Picture Statue;
+	Picture Boulevard_monmarte;
+	Picture Volpedo_FourthEstate;
+
+	Model M_Platform;
+	Texture T_Platform;
+	DescriptorSet DS_Platform;
 
 	Skybox skybox;
 	
@@ -175,7 +181,7 @@ class MyProject : public BaseProject {
 		
 		// Descriptor pool sizes  !!!!
 		uniformBlocksInPool = 2;
-		texturesInPool = 7;
+		texturesInPool = 10;
 		setsInPool = texturesInPool+2;
 	}
 	
@@ -224,6 +230,20 @@ class MyProject : public BaseProject {
 			{1, TEXTURE, 0, &T_Museum},
 		});
 
+	
+		M_Platform.init(this, MODEL_PATH + "Floating_Platform.obj");
+		T_Platform.init(this, TEXTURE_PATH + "Floating_Platform.png");
+		DS_Platform.init(this, &DSL_museum, {
+			// the second parameter, is a pointer to the Uniform Set Layout of this set
+			// the last parameter is an array, with one element per binding of the set.
+			// first  elmenet : the binding number
+			// second element : UNIFORM or TEXTURE (an enum) depending on the type
+			// third  element : only for UNIFORMs, the size of the corresponding C++ object
+			// fourth element : only for TEXTUREs, the pointer to the corresponding texture object
+				{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+				{1, TEXTURE, 0, &T_Platform},
+			});
+
 		glm::mat4 temp = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 6.1f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
@@ -264,6 +284,20 @@ class MyProject : public BaseProject {
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f));
 		Statue.init(&DSL_pic, this, MODEL_PATH + "Statue.obj", TEXTURE_PATH + "Statue.jpg", temp);
 
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(3.1f, 0.90f, 6.1f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.05f, 0.05f, 0.05f));
+		Boulevard_monmarte.init(&DSL_pic, this, MODEL_PATH + "Boulevard_monmarte.obj", TEXTURE_PATH + "Boulevard_monmarte.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(3.1f, 0.90f, 3.88f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.095f, 0.095f, 0.095f));
+		Volpedo_FourthEstate.init(&DSL_pic, this, MODEL_PATH + "Volpedo_FourthEstate.obj", TEXTURE_PATH + "Volpedo_FourthEstate.png", temp);
+
 		skybox.init(this, &DSL_global);
 
 		DS_global.init(this, &DSL_global, {
@@ -278,12 +312,18 @@ class MyProject : public BaseProject {
 		T_Museum.cleanup();
 		M_Museum.cleanup();
 
+		DS_Platform.cleanup();
+		T_Platform.cleanup();
+		M_Platform.cleanup();
+
 		Sunday.cleanup();
 		StarringNight.cleanup();
 		VanGogh.cleanup();
 		Munch_Scream.cleanup();
 		Guernica.cleanup();
 		Statue.cleanup();
+		Boulevard_monmarte.cleanup();
+		Volpedo_FourthEstate.cleanup();
 
 		DS_global.cleanup();
 
@@ -347,9 +387,21 @@ class MyProject : public BaseProject {
 		Munch_Scream.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		Guernica.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		Statue.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Boulevard_monmarte.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Volpedo_FourthEstate.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 
 		// skybox
 		skybox.populateCommandBuffer(commandBuffer, currentImage, DS_global);
+
+		//------------Platform--------------
+		VkBuffer vertexBuffersP[] = { M_Platform.vertexBuffer };
+		VkDeviceSize offsetsP[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffersP, offsetsP);
+		vkCmdBindIndexBuffer(commandBuffer, M_Platform.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			museumPipeline.pipelineLayout, 1, 1, &DS_Platform.descriptorSets[currentImage],
+			0, nullptr);
+		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(M_Platform.indices.size()), 1, 0, 0, 0);
 	}
 
 	// Here is where you update the uniforms.
@@ -373,6 +425,8 @@ class MyProject : public BaseProject {
 		double m_dx = xpos - old_xpos;
 		double m_dy = ypos - old_ypos;
 		old_xpos = xpos; old_ypos = ypos;
+
+		glm::vec3 oldCamPos = CamPos;
 
 		glfwSetInputMode(window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
@@ -413,6 +467,19 @@ class MyProject : public BaseProject {
 			CamPos -= MOVE_SPEED * glm::vec3(glm::rotate(glm::mat4(1.0f), CamAng.y,
 				glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec4(0, 0, 1, 1)) * deltaT;
 		}
+		/*
+		if (glfwGetKey(window, GLFW_KEY_F)) {
+			CamPos -= MOVE_SPEED * glm::vec3(0, 1, 0) * deltaT;
+		}
+		if (glfwGetKey(window, GLFW_KEY_R)) {
+			CamPos += MOVE_SPEED * glm::vec3(0, 1, 0) * deltaT;
+		}
+		*/
+		//---------------Limits-----------//
+		/*
+		if (CamPos.x > 5.0f || CamPos.x < -5.0f || CamPos.z < -2.0f || CamPos.z > 10.0f) {
+			CamPos = oldCamPos;
+		}*/
 
 		glm::mat4 CamMat = glm::translate(glm::transpose(glm::mat4(CamDir)), -CamPos);
 
@@ -443,18 +510,24 @@ class MyProject : public BaseProject {
 		memcpy(data, &ubo_museum, sizeof(ubo_museum));
 		vkUnmapMemory(device, DS_Museum.uniformBuffersMemory[0][currentImage]);
 
+		//Platform ubo
+		UniformBufferObject ubo_platform{};
+		ubo_platform.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -3.85f, -1.6f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.15f, 0.15f, 0.15f));
 
-		// è rimasto dal merge ma non so cosa sia
-		ubo_museum.model = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 6.0f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(0.04f, 0.04f, 0.04f));
+		vkMapMemory(device, DS_Platform.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo_platform), 0, &data);
+		memcpy(data, &ubo_platform, sizeof(ubo_platform));
+		vkUnmapMemory(device, DS_Platform.uniformBuffersMemory[0][currentImage]);
 
-
+	
 		copyPicInMemory(Sunday, currentImage, Sunday.ubo, data, device);
 		copyPicInMemory(StarringNight, currentImage, StarringNight.ubo, data, device);
 		copyPicInMemory(VanGogh, currentImage, VanGogh.ubo, data, device);
 		copyPicInMemory(Munch_Scream, currentImage, Munch_Scream.ubo, data, device);
 		copyPicInMemory(Guernica, currentImage, Guernica.ubo, data, device);
 		copyPicInMemory(Statue, currentImage, Statue.ubo, data, device);
+		copyPicInMemory(Boulevard_monmarte, currentImage, Boulevard_monmarte.ubo, data, device);
+		copyPicInMemory(Volpedo_FourthEstate, currentImage, Volpedo_FourthEstate.ubo, data, device);
 
 		// skybox -> ma se tanto è costante una volta che lo ho copiato non rimane li per sempre?
 		skybox.updateVkMemory(device, currentImage, data);
