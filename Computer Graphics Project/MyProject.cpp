@@ -206,6 +206,8 @@ class MyProject : public BaseProject {
 
 
 	Statue Venus_Milo;
+	Statue David;
+	Statue Discobolus;
 
 	Picture Sunday;
 	Picture StarringNight;
@@ -234,7 +236,7 @@ class MyProject : public BaseProject {
 		
 		// Descriptor pool sizes  !!!!
 		uniformBlocksInPool = 2;
-		texturesInPool = 13;
+		texturesInPool = 15;
 		setsInPool = texturesInPool+2;
 	}
 	
@@ -308,7 +310,7 @@ class MyProject : public BaseProject {
 			});
 		
 
-		//-----Skybox----//
+		//-----Pictures----//
 		glm::mat4 temp = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 6.1f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
@@ -385,6 +387,16 @@ class MyProject : public BaseProject {
 			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f));
 		Venus_Milo.init(&DSL_statue, this, MODEL_PATH + "Venus_Milo.obj", TEXTURE_PATH + "Venus_Milo.jpg", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.05f, 3.8f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.0022f, 0.0022f, 0.0022f));
+		David.init(&DSL_statue, this, MODEL_PATH + "David.obj", TEXTURE_PATH + "David.jpg", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.7f, 0.05f, 3.8f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.0055f, 0.0055f, 0.0055f));
+		Discobolus.init(&DSL_statue, this, MODEL_PATH + "Discobolus.obj", TEXTURE_PATH + "Discobolus.jpg", temp);
 
 		//----Skybox---//
 		skybox.init(this, &DSL_global);
@@ -417,6 +429,8 @@ class MyProject : public BaseProject {
 		TheDance.cleanup();
 
 		Venus_Milo.cleanup();
+		David.cleanup();
+		Discobolus.cleanup();
 
 		DS_global.cleanup();
 
@@ -486,7 +500,9 @@ class MyProject : public BaseProject {
 		TheDance.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 
 		// ---------- statues command buffer ----------
-		Venus_Milo.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Venus_Milo.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
+		David.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
+		Discobolus.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
 
 
 		// skybox
@@ -631,6 +647,8 @@ class MyProject : public BaseProject {
 		copyInMemory(TheDance, currentImage, TheDance.ubo, data, device);
 
 		copyInMemory(Venus_Milo, currentImage, Venus_Milo.ubo, data, device);
+		copyInMemory(David, currentImage, David.ubo, data, device);
+		copyInMemory(Discobolus, currentImage, Discobolus.ubo, data, device);
 
 		// skybox -> ma se tanto è costante una volta che lo ho copiato non rimane li per sempre?
 		skybox.updateVkMemory(device, currentImage, data);
