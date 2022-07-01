@@ -54,11 +54,57 @@ void Picture::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentIm
 	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 }
 
-void copyPicInMemory(Picture picture, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
+void copyInMemory(Picture picture, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
 	vkMapMemory(device, picture.descSet.uniformBuffersMemory[0][currentImage], 0,
 		sizeof(ubo), 0, &data);
 	memcpy(data, &ubo, sizeof(ubo));
 	vkUnmapMemory(device, picture.descSet.uniformBuffersMemory[0][currentImage]);
+};
+
+struct Statue {
+	Model model;
+	Texture texture;
+	DescriptorSet descSet;
+
+	UniformBufferObject ubo;
+
+	void cleanup();
+	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position);
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+};
+
+void Statue::cleanup() {
+	descSet.cleanup();
+	texture.cleanup();
+	model.cleanup();
+}
+
+void Statue::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position) {
+	model.init(bs, modelString);
+	texture.init(bs, textureString);
+	descSet.init(bs, DSL, {
+		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+		{1, TEXTURE, 0, &texture}
+		});
+	ubo.model = position;
+}
+
+void Statue::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
+	VkBuffer vertexBuffers[] = { model.vertexBuffer };
+	VkDeviceSize offsets[] = { 0 };
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
+		0, nullptr);
+	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+}
+
+void copyInMemory(Statue statue, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
+	vkMapMemory(device, statue.descSet.uniformBuffersMemory[0][currentImage], 0,
+		sizeof(ubo), 0, &data);
+	memcpy(data, &ubo, sizeof(ubo));
+	vkUnmapMemory(device, statue.descSet.uniformBuffersMemory[0][currentImage]);
 };
 
 struct Skybox {
@@ -144,10 +190,12 @@ class MyProject : public BaseProject {
 	DescriptorSetLayout DSL_skybox;
 
 	DescriptorSetLayout DSL_pic;
+	DescriptorSetLayout DSL_statue;
 
 	// Pipelines
 	Pipeline museumPipeline;
 	Pipeline picturePipeline;
+	Pipeline statuePipeline;
 
 	// Models, textures and Descriptors (values assigned to the uniforms)
 	Model M_Museum;
@@ -156,14 +204,19 @@ class MyProject : public BaseProject {
 
 	DescriptorSet DS_global; // used for cam and light points
 
+
+	Statue Venus_Milo;
+
 	Picture Sunday;
 	Picture StarringNight;
 	Picture VanGogh;
 	Picture Munch_Scream;
 	Picture Guernica;
-	Picture Statue;
 	Picture Boulevard_monmarte;
 	Picture Volpedo_FourthEstate;
+	Picture TheBathers;
+	Picture Impression_Sunrise;
+	Picture TheDance;
 
 	Model M_Platform;
 	Texture T_Platform;
@@ -181,7 +234,7 @@ class MyProject : public BaseProject {
 		
 		// Descriptor pool sizes  !!!!
 		uniformBlocksInPool = 2;
-		texturesInPool = 10;
+		texturesInPool = 13;
 		setsInPool = texturesInPool+2;
 	}
 	
@@ -205,6 +258,15 @@ class MyProject : public BaseProject {
 					{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
 					{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
 				  });
+		
+		DSL_statue.init(this, {
+					// this array contains the binding:
+					// first  element : the binding number
+					// second element : the time of element (buffer or texture)
+					// third  element : the pipeline stage where it will be used
+					{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
+					{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
+				  });
 
 		DSL_global.init(this, {
 			{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS},
@@ -215,6 +277,7 @@ class MyProject : public BaseProject {
 		// be used in this pipeline. The first element will be set 0, and so on..
 		picturePipeline.init(this, "shaders/picture_vert.spv", "shaders/picture_frag.spv", { &DSL_global, &DSL_pic });
 		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_global, &DSL_museum});
+		statuePipeline.init(this, "shaders/statue_vert.spv", "shaders/statue_frag.spv", {&DSL_global, &DSL_statue});
 
 		// Models, textures and Descriptors (values assigned to the uniforms)
 		M_Museum.init(this, MODEL_PATH + "museumTri.obj");
@@ -243,7 +306,9 @@ class MyProject : public BaseProject {
 				{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
 				{1, TEXTURE, 0, &T_Platform},
 			});
+		
 
+		//-----Skybox----//
 		glm::mat4 temp = glm::translate(glm::mat4(1.0f), glm::vec3(-0.86f, 0.90f, 6.1f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
@@ -279,11 +344,6 @@ class MyProject : public BaseProject {
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.095f, 0.095f, 0.095f));
 		Guernica.init(&DSL_pic, this, MODEL_PATH + "Guernica.obj", TEXTURE_PATH + "Guernica.png", temp);
 
-		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.05f, -0.30f))*
-			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f));
-		Statue.init(&DSL_pic, this, MODEL_PATH + "Statue.obj", TEXTURE_PATH + "Statue.jpg", temp);
-
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(3.1f, 0.90f, 6.1f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
@@ -297,7 +357,36 @@ class MyProject : public BaseProject {
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.095f, 0.095f, 0.095f));
 		Volpedo_FourthEstate.init(&DSL_pic, this, MODEL_PATH + "Volpedo_FourthEstate.obj", TEXTURE_PATH + "Volpedo_FourthEstate.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(3.1f, 0.90f, 2.25f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.055f, 0.055f, 0.055f));
+		TheBathers.init(&DSL_pic, this, MODEL_PATH + "TheBathers.obj", TEXTURE_PATH + "TheBathers.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(3.1f, 0.90f, 1.25f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.035f, 0.035f, 0.035f));
+		Impression_Sunrise.init(&DSL_pic, this, MODEL_PATH + "Impression_Sunrise.obj", TEXTURE_PATH + "Impression_Sunrise.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(3.05f, 1.15f, -0.25f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.07f, 0.07f, 0.07f));
+		TheDance.init(&DSL_pic, this, MODEL_PATH + "TheDance.obj", TEXTURE_PATH + "TheDance.png", temp);
 
+
+		//-----Statues-----//
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.05f, -0.30f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f));
+		Venus_Milo.init(&DSL_statue, this, MODEL_PATH + "Venus_Milo.obj", TEXTURE_PATH + "Venus_Milo.jpg", temp);
+
+		//----Skybox---//
 		skybox.init(this, &DSL_global);
 
 		DS_global.init(this, &DSL_global, {
@@ -321,9 +410,13 @@ class MyProject : public BaseProject {
 		VanGogh.cleanup();
 		Munch_Scream.cleanup();
 		Guernica.cleanup();
-		Statue.cleanup();
 		Boulevard_monmarte.cleanup();
 		Volpedo_FourthEstate.cleanup();
+		TheBathers.cleanup();
+		Impression_Sunrise.cleanup();
+		TheDance.cleanup();
+
+		Venus_Milo.cleanup();
 
 		DS_global.cleanup();
 
@@ -386,9 +479,15 @@ class MyProject : public BaseProject {
 		VanGogh.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		Munch_Scream.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		Guernica.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
-		Statue.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		Boulevard_monmarte.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		Volpedo_FourthEstate.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		TheBathers.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Impression_Sunrise.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		TheDance.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+
+		// ---------- statues command buffer ----------
+		Venus_Milo.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+
 
 		// skybox
 		skybox.populateCommandBuffer(commandBuffer, currentImage, DS_global);
@@ -520,14 +619,18 @@ class MyProject : public BaseProject {
 		vkUnmapMemory(device, DS_Platform.uniformBuffersMemory[0][currentImage]);
 
 	
-		copyPicInMemory(Sunday, currentImage, Sunday.ubo, data, device);
-		copyPicInMemory(StarringNight, currentImage, StarringNight.ubo, data, device);
-		copyPicInMemory(VanGogh, currentImage, VanGogh.ubo, data, device);
-		copyPicInMemory(Munch_Scream, currentImage, Munch_Scream.ubo, data, device);
-		copyPicInMemory(Guernica, currentImage, Guernica.ubo, data, device);
-		copyPicInMemory(Statue, currentImage, Statue.ubo, data, device);
-		copyPicInMemory(Boulevard_monmarte, currentImage, Boulevard_monmarte.ubo, data, device);
-		copyPicInMemory(Volpedo_FourthEstate, currentImage, Volpedo_FourthEstate.ubo, data, device);
+		copyInMemory(Sunday, currentImage, Sunday.ubo, data, device);
+		copyInMemory(StarringNight, currentImage, StarringNight.ubo, data, device);
+		copyInMemory(VanGogh, currentImage, VanGogh.ubo, data, device);
+		copyInMemory(Munch_Scream, currentImage, Munch_Scream.ubo, data, device);
+		copyInMemory(Guernica, currentImage, Guernica.ubo, data, device);
+		copyInMemory(Boulevard_monmarte, currentImage, Boulevard_monmarte.ubo, data, device);
+		copyInMemory(Volpedo_FourthEstate, currentImage, Volpedo_FourthEstate.ubo, data, device);
+		copyInMemory(TheBathers, currentImage, TheBathers.ubo, data, device);
+		copyInMemory(Impression_Sunrise, currentImage, Impression_Sunrise.ubo, data, device);
+		copyInMemory(TheDance, currentImage, TheDance.ubo, data, device);
+
+		copyInMemory(Venus_Milo, currentImage, Venus_Milo.ubo, data, device);
 
 		// skybox -> ma se tanto è costante una volta che lo ho copiato non rimane li per sempre?
 		skybox.updateVkMemory(device, currentImage, data);

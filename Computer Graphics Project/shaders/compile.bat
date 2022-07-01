@@ -6,4 +6,6 @@
 %VULKAN_SDK%/Bin/glslc.exe text.vert -o textVert.spv
 %VULKAN_SDK%/Bin/glslc.exe picture_shader.frag -o picture_frag.spv
 %VULKAN_SDK%/Bin/glslc.exe picture_shader.vert -o picture_vert.spv
+%VULKAN_SDK%/Bin/glslc.exe statue_shader.frag -o statue_frag.spv
+%VULKAN_SDK%/Bin/glslc.exe statue_shader.vert -o statue_vert.spv
 pause
