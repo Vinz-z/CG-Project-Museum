@@ -12,7 +12,8 @@ void main() {
 	const vec3  diffColor = texture(texSampler, fragTexCoord).rgb;
 	const vec3  specColor = vec3(1.0f, 1.0f, 1.0f);
 	const float specPower = 150.0f;
-	const vec3  L = vec3(-0.4830f, 0.8365f, -0.2588f);
+	//const vec3  L = vec3(-0.4830f, 0.8365f, -0.2588f);
+	const vec3  L = vec3(0.0f, -0.5f, 0.0f);
 	//const vec3 topColor = vec3(0.325f,0.847f,0.9843f);
 	//const vec3 bottomColor = vec3(0.384f, 0.580f, 0.3764f);
 

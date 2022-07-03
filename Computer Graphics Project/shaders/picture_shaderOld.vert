@@ -1,11 +1,11 @@
 #version 450
 
-layout(set = 0, binding = 0) uniform GlobalUniformBufferObject {
+layout(set=0, binding = 0) uniform GlobalUniformBufferObject {
 	mat4 view;
 	mat4 proj;
 } gubo;
 
-layout(set = 1, binding = 0) uniform UniformBufferObject {
+layout(set=1,binding = 0) uniform UniformBufferObject {
 	mat4 model;
 } ubo;
 
