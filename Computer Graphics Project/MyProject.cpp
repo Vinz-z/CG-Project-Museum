@@ -216,7 +216,7 @@ class MyProject : public BaseProject {
 	Picture Guernica;
 	Picture Boulevard_monmarte;
 	Picture Volpedo_FourthEstate;
-	Picture TheBathers;
+	Picture Persistenza;
 	Picture Impression_Sunrise;
 	Picture TheDance;
 	Picture Manet_Dejeuner;
@@ -224,8 +224,29 @@ class MyProject : public BaseProject {
 	Picture La_Camera;
 	Picture Composizione_VI;
 	Picture Cavalli;
+	Picture Dream;
+	Picture Cigni;
+	Picture Donna_Cappello;
 
+	//Signals
+	Picture Dalì1;
+	Picture Dalì2;
+	Picture Impressionism1;
+	Picture Impressionism2;
+	Picture VanGoghSign1;
+	Picture VanGoghSign2;
+	Picture Expressionism1;
+	Picture Expressionism2;
+	Picture GuernicaSign1;
+	Picture GuernicaSign2;
+	Picture Sculptures1;
+	Picture Sculptures2;
+	Picture Matisse1;
+	Picture Matisse2;
+	Picture Fourth1;
+	Picture Fourth2;
 
+	//Platform
 	Model M_Platform;
 	Texture T_Platform;
 	DescriptorSet DS_Platform;
@@ -242,8 +263,8 @@ class MyProject : public BaseProject {
 		
 		// Descriptor pool sizes  !!!!
 		uniformBlocksInPool = 2;
-		texturesInPool = 20;
-		setsInPool = texturesInPool+2;
+		texturesInPool = 31;
+		setsInPool = texturesInPool+10;
 	}
 	
 	// Here you load and setup all your Vulkan objects
@@ -317,10 +338,17 @@ class MyProject : public BaseProject {
 		
 
 		//-----Pictures----//
-		glm::mat4 temp = glm::translate(glm::mat4(1.0f), glm::vec3(-1.9f, 0.9f, 12.6f))*
+		//Matisse
+		glm::mat4 temp = glm::translate(glm::mat4(1.0f), glm::vec3(-1.9f, 0.9f, 12.5f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.009f, 0.009f, 0.009f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
 		TheDance.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "TheDance.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.3f, 0.8f, 12.3f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.003f, 0.003f, 0.003f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.24f, 1.0f));
+		Donna_Cappello.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Donna_Cappello.png", temp);
 		
 		//Van Gogh
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-1.9f, 0.90f, 4.2f))*
@@ -396,34 +424,184 @@ class MyProject : public BaseProject {
 		Cavalli.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Cavalli.png", temp);
 
 
-
-		temp = glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 10.0f, 10.0f))*
+		//Volpedo Fourth Estate
+		/*
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.8f, 1.2f, 13.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(0.095f, 0.095f, 0.095f));
-		Volpedo_FourthEstate.init(&DSL_pic, this, MODEL_PATH + "Volpedo_FourthEstate.obj", TEXTURE_PATH + "Volpedo_FourthEstate.png", temp);
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.15f, 0.15f, 0.15f));
+		Volpedo_FourthEstate.init(&DSL_pic, this, MODEL_PATH + "Volpedo_FourthEstate.obj", TEXTURE_PATH + "Volpedo_FourthEstate.png", temp);*/
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.8f, 0.7f, 14.6f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.016f, 0.016f, 0.016f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.540f, 1.0f));
+		Volpedo_FourthEstate.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Volpedo_FourthEstate.png", temp);
 
-		temp = glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 10.0f, 10.0f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f))*
+
+		//Dalì
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.8f, 1.0f, 7.8f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.0057f, 0.0057f, 0.0057f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
-		TheBathers.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "TheBathers.png", temp);
+		Persistenza.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Persistenza.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.8f, 0.9f, 9.9f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.0032f, 0.0032f, 0.0032f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.24, 1.0f));
+		Dream.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Dream.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.6f, 0.90f, 8.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.007f, 0.007f, 0.007f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
+		Cigni.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Cigni.png", temp);
 
 		//-----Statues-----//
-		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.05f, 0.30f))*
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.05f, -2.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.007f, 0.007f, 0.007f));
 		Venus_Milo.init(&DSL_statue, this, MODEL_PATH + "Venus_Milo.obj", TEXTURE_PATH + "Venus_Milo.jpg", temp);
 		
-		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.05f, 0.8f))*
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.05f, -0.5f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.003f, 0.003f, 0.003f));
 		David.init(&DSL_statue, this, MODEL_PATH + "David.obj", TEXTURE_PATH + "David.jpg", temp);
 		
-		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.7f, 0.05f, 0.8f))*
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.05f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.007f, 0.007f, 0.007f));
 		Discobolus.init(&DSL_statue, this, MODEL_PATH + "Discobolus.obj", TEXTURE_PATH + "Discobolus.jpg", temp);
+
+		//Signals
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(4.15f, 2.0f, 10.9f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		Dalì1.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "Dalì.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(4.15f, 2.0f, 6.2f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		Dalì2.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "Dalì.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-0.35f, 2.0f, 10.9f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		Impressionism1.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "Impressionism.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-0.35f, 2.0f, 6.2f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		Impressionism2.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "Impressionism.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-0.35f, 2.0f, 6.4f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		VanGoghSign1.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "VanGoghSign.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-0.35f, 2.0f, 1.7f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		VanGoghSign2.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "VanGoghSign.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(4.15f, 2.0f, 6.4f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		Expressionism1.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "Expressionism.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(4.15f, 2.0f, 1.7f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		Expressionism2.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "Expressionism.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-0.35f, 2.0f, 1.85f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		GuernicaSign1.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "GuernicaSign.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.6, 2.0f, -1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		GuernicaSign2.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "GuernicaSign.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(4.15f, 2.0f, 1.85f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		Sculptures1.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "Sculptures.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.38, 2.0f, -1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		Sculptures2.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "Sculptures.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-0.35f, 2.0f, 10.7f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		Matisse1.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "Matisse.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.6, 2.0f, 13.6f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		Matisse2.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "Matisse.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(4.15f, 2.0f, 10.65f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		Fourth1.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "TheFourthSign.png", temp);
+		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.38, 2.0f, 13.6f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
+			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
+		Fourth2.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "TheFourthSign.png", temp);
+
 
 		//----Skybox---//
 		skybox.init(this, &DSL_global);
@@ -451,7 +629,7 @@ class MyProject : public BaseProject {
 		Guernica.cleanup();
 		Boulevard_monmarte.cleanup();
 		Volpedo_FourthEstate.cleanup();
-		TheBathers.cleanup();
+		Persistenza.cleanup();
 		Impression_Sunrise.cleanup();
 		TheDance.cleanup();
 		Manet_Dejeuner.cleanup();
@@ -459,10 +637,30 @@ class MyProject : public BaseProject {
 		La_Camera.cleanup();
 		Composizione_VI.cleanup();
 		Cavalli.cleanup();
+		Dream.cleanup();
+		Cigni.cleanup();
+		Donna_Cappello.cleanup();
 
 		Venus_Milo.cleanup();
 		David.cleanup();
 		Discobolus.cleanup();
+
+		Dalì1.cleanup();
+		Dalì2.cleanup();
+		Impressionism1.cleanup();
+		Impressionism2.cleanup();
+		VanGoghSign1.cleanup();
+		VanGoghSign2.cleanup();
+		Expressionism1.cleanup();
+		Expressionism2.cleanup();
+		GuernicaSign1.cleanup();
+		GuernicaSign2.cleanup();
+		Sculptures1.cleanup();
+		Sculptures2.cleanup();
+		Matisse1.cleanup();
+		Matisse2.cleanup();
+		Fourth1.cleanup();
+		Fourth2.cleanup();
 
 		DS_global.cleanup();
 
@@ -527,7 +725,7 @@ class MyProject : public BaseProject {
 		Guernica.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		Boulevard_monmarte.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		Volpedo_FourthEstate.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
-		TheBathers.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Persistenza.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		Impression_Sunrise.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		TheDance.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		Manet_Dejeuner.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
@@ -535,11 +733,32 @@ class MyProject : public BaseProject {
 		La_Camera.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		Composizione_VI.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		Cavalli.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Dream.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Cigni.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Donna_Cappello.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 
 		// ---------- statues command buffer ----------
 		Venus_Milo.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
 		David.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
 		Discobolus.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
+
+
+		Dalì1.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Dalì2.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Impressionism1.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Impressionism2.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		VanGoghSign1.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		VanGoghSign2.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Expressionism1.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Expressionism2.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		GuernicaSign1.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		GuernicaSign2.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Sculptures1.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Sculptures2.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Matisse1.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Matisse2.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Fourth1.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
+		Fourth2.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 
 
 		// skybox
@@ -680,7 +899,7 @@ class MyProject : public BaseProject {
 		copyInMemory(Guernica, currentImage, Guernica.ubo, data, device);
 		copyInMemory(Boulevard_monmarte, currentImage, Boulevard_monmarte.ubo, data, device);
 		copyInMemory(Volpedo_FourthEstate, currentImage, Volpedo_FourthEstate.ubo, data, device);
-		copyInMemory(TheBathers, currentImage, TheBathers.ubo, data, device);
+		copyInMemory(Persistenza, currentImage, Persistenza.ubo, data, device);
 		copyInMemory(Impression_Sunrise, currentImage, Impression_Sunrise.ubo, data, device);
 		copyInMemory(TheDance, currentImage, TheDance.ubo, data, device);
 		copyInMemory(Manet_Dejeuner, currentImage, Manet_Dejeuner.ubo, data, device);
@@ -688,10 +907,31 @@ class MyProject : public BaseProject {
 		copyInMemory(La_Camera, currentImage, La_Camera.ubo, data, device);
 		copyInMemory(Composizione_VI, currentImage, Composizione_VI.ubo, data, device);
 		copyInMemory(Cavalli, currentImage, Cavalli.ubo, data, device);
+		copyInMemory(Dream, currentImage, Dream.ubo, data, device);
+		copyInMemory(Cigni, currentImage, Cigni.ubo, data, device);
+		copyInMemory(Donna_Cappello, currentImage, Donna_Cappello.ubo, data, device);
 
 		copyInMemory(Venus_Milo, currentImage, Venus_Milo.ubo, data, device);
 		copyInMemory(David, currentImage, David.ubo, data, device);
 		copyInMemory(Discobolus, currentImage, Discobolus.ubo, data, device);
+
+
+		copyInMemory(Dalì1, currentImage, Dalì1.ubo, data, device);
+		copyInMemory(Dalì2, currentImage, Dalì2.ubo, data, device);
+		copyInMemory(Impressionism1, currentImage, Impressionism1.ubo, data, device);
+		copyInMemory(Impressionism2, currentImage, Impressionism2.ubo, data, device);
+		copyInMemory(VanGoghSign1, currentImage, VanGoghSign1.ubo, data, device);
+		copyInMemory(VanGoghSign2, currentImage, VanGoghSign2.ubo, data, device);
+		copyInMemory(Expressionism1, currentImage, Expressionism1.ubo, data, device);
+		copyInMemory(Expressionism2, currentImage, Expressionism2.ubo, data, device);
+		copyInMemory(GuernicaSign1, currentImage, GuernicaSign1.ubo, data, device);
+		copyInMemory(GuernicaSign2, currentImage, GuernicaSign2.ubo, data, device);
+		copyInMemory(Sculptures1, currentImage, Sculptures1.ubo, data, device);
+		copyInMemory(Sculptures2, currentImage, Sculptures2.ubo, data, device);
+		copyInMemory(Matisse1, currentImage, Matisse1.ubo, data, device);
+		copyInMemory(Matisse2, currentImage, Matisse2.ubo, data, device);
+		copyInMemory(Fourth1, currentImage, Fourth1.ubo, data, device);
+		copyInMemory(Fourth2, currentImage, Fourth2.ubo, data, device);
 
 		// skybox -> ma se tanto è costante una volta che lo ho copiato non rimane li per sempre?
 		skybox.updateVkMemory(device, currentImage, data);
