@@ -347,13 +347,13 @@ class MyProject : public BaseProject {
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.3f, 0.8f, 12.3f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.003f, 0.003f, 0.003f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.24f, 1.0f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.37f, 1.0f));
 		Donna_Cappello.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Donna_Cappello.png", temp);
 		
 		//Van Gogh
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-1.9f, 0.90f, 4.2f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.006f, 0.006f, 0.006f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.770f, 1.0f));
 		StarringNight.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "starringNight.png", temp);
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-1.9f, 1.1f, 2.4f))*
@@ -364,13 +364,13 @@ class MyProject : public BaseProject {
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.3f, 1.0f, 3.5f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.0032f, 0.0032f, 0.0032f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.24f, 1.0f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.311f, 1.0f));
 		Girasoli.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Girasoli.png", temp);
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.3f, 1.0f, 5.5f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.006f, 0.006f, 0.006f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.793f, 1.0f));
 		La_Camera.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "La_Camera.png", temp);
 
 		//Guernica
@@ -384,24 +384,24 @@ class MyProject : public BaseProject {
 		//Impressionism
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-1.9f, 0.9f, 6.65f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.006f, 0.006f, 0.006f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.776f, 1.0f));
 		Boulevard_monmarte.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Boulevard_monmarte.png", temp);
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-1.9f, 0.9f, 8.9f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.005f, 0.005f, 0.005f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.776f, 1.0f));
 		Impression_Sunrise.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Impression_Sunrise.png", temp);
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.3f, 0.9f, 8.2f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.007f, 0.007f, 0.007f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.671f, 1.0f));
 		Sunday.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "a_sunday_afternoon.png", temp);
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.3f, 0.9f, 10.2f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.007f, 0.007f, 0.007f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.777f, 1.0f));
 		Manet_Dejeuner.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Manet_Dejeuner.jpg", temp);
 		
 		
@@ -409,7 +409,7 @@ class MyProject : public BaseProject {
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.8f, 0.85f, 3.2f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.004f, 0.004f, 0.004f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.24f, 1.0f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.27f, 1.0f));
 		Munch_Scream.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Munch_Scream.png", temp);
 		
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.8f, 0.9f, 5.4f))*
@@ -420,7 +420,7 @@ class MyProject : public BaseProject {
 		
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.6f, 0.90f, 3.4f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.007f, 0.007f, 0.007f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.587f, 1.0f));
 		Cavalli.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Cavalli.png", temp);
 
 
@@ -444,18 +444,18 @@ class MyProject : public BaseProject {
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.8f, 1.0f, 7.8f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.0057f, 0.0057f, 0.0057f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.666f, 1.0f));
 		Persistenza.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Persistenza.png", temp);
 		
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.8f, 0.9f, 9.9f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.0032f, 0.0032f, 0.0032f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.24, 1.0f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.26, 1.0f));
 		Dream.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Dream.png", temp);
 		
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.6f, 0.90f, 8.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.007f, 0.007f, 0.007f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.65f, 1.0f));
 		Cigni.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Cigni.png", temp);
 
 		//-----Statues-----//
