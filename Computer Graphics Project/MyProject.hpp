@@ -83,6 +83,9 @@ struct Vertex {
 	}
 };
 
+struct PushConstantObject {
+	alignas(16) glm::mat4 worldMat;
+};
 
 // Lesson 13
 struct QueueFamilyIndices {
@@ -1788,13 +1791,18 @@ void Pipeline::init(BaseProject *bp, const std::string& VertShader, const std::s
 		DSL[i] = D[i]->descriptorSetLayout;
 	}
 	
+	VkPushConstantRange pushConstantRange{};
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	pushConstantRange.offset = 0;
+	pushConstantRange.size = sizeof(PushConstantObject);
+
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType =
 		VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.setLayoutCount = DSL.size();
 	pipelineLayoutInfo.pSetLayouts = DSL.data();
-	pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
-	pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
+	pipelineLayoutInfo.pushConstantRangeCount = 1; // Optional
+	pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange; // Optional
 	
 	VkResult result = vkCreatePipelineLayout(BP->device, &pipelineLayoutInfo, nullptr,
 				&pipelineLayout);
