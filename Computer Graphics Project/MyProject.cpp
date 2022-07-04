@@ -7,8 +7,8 @@ const std::string TEXTURE_PATH = "textures/";
 
 // The uniform buffer object used in this example
 struct GlobalUniformBufferObject {
-	alignas(16) glm::mat4 view;
-	alignas(16) glm::mat4 proj;
+	alignas(16) glm::mat4 view; // alignas lo usa cpp per allineare i byte della matrice... 
+	alignas(16) glm::mat4 proj; // la shader puo avere problemi con dei padding tra campi di una struttura
 };
 
 struct UniformBufferObject {
@@ -20,7 +20,7 @@ struct Picture {
 	Texture texture;
 	DescriptorSet descSet;
 
-	UniformBufferObject ubo;
+	PushConstantObject pco;
 
 	void cleanup();
 	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position);
@@ -40,7 +40,7 @@ void Picture::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelS
 		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
 		{1, TEXTURE, 0, &texture}
 	});
-	ubo.model = position;
+	pco.worldMat = position;
 }
 
 void Picture::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
@@ -51,6 +51,13 @@ void Picture::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentIm
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
 		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage], 
 		0, nullptr);
+
+	// push constant before drawing the picture
+	vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+		0, sizeof(PushConstantObject), &pco
+	);
+
+	// draw the picture
 	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 }
 
@@ -66,7 +73,7 @@ struct Statue {
 	Texture texture;
 	DescriptorSet descSet;
 
-	UniformBufferObject ubo;
+	PushConstantObject pco;
 
 	void cleanup();
 	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position);
@@ -86,7 +93,7 @@ void Statue::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelSt
 		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
 		{1, TEXTURE, 0, &texture}
 		});
-	ubo.model = position;
+	pco.worldMat = position;
 }
 
 void Statue::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
@@ -97,6 +104,12 @@ void Statue::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentIma
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
 		0, nullptr);
+
+	// push constant before drawing the picture
+	vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+		0, sizeof(PushConstantObject), &pco
+	);
+
 	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 }
 
@@ -269,6 +282,12 @@ class MyProject : public BaseProject {
 	
 	// Here you load and setup all your Vulkan objects
 	void localInit() {
+
+		// setting things for glfw
+		double halfw = windowWidth * 1.0 / 2;
+		double halfh = windowHeight * 1.0 / 2;
+		glfwGetCursorPos(window, &halfw, &halfh);
+
 		// Descriptor Layouts [what will be passed to the shaders]
 		DSL_museum.init(this, {
 					// this array contains the binding:
@@ -781,7 +800,7 @@ class MyProject : public BaseProject {
 		static auto startTime = std::chrono::high_resolution_clock::now();
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float time = std::chrono::duration<float, std::chrono::seconds::period>
-					(currentTime - startTime).count();
+			(currentTime - startTime).count();
 		static float lastTime = 0.0f;
 		float deltaT = time - lastTime;
 		lastTime = time;
@@ -790,20 +809,33 @@ class MyProject : public BaseProject {
 		float MOVE_SPEED = 3.0f; //speed of camera movements
 		float MOUSE_RES = 500.0f;
 
-		static double old_xpos = 0, old_ypos = 0;
+		static bool hideMouse = true, showMouse = false, isMouseHidden = false;
 		double xpos, ypos;
 		glfwGetCursorPos(window, &xpos, &ypos);
-		double m_dx = xpos - old_xpos;
-		double m_dy = ypos - old_ypos;
+		static double old_xpos = xpos, old_ypos = ypos;
+		double m_dx = old_xpos - xpos;
+		double m_dy = old_ypos - ypos;
 		old_xpos = xpos; old_ypos = ypos;
 
 		glm::vec3 oldCamPos = CamPos;
 
 		glfwSetInputMode(window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-			CamAng.y += m_dx * ROT_SPEED / MOUSE_RES;
-			CamAng.x += m_dy * ROT_SPEED / MOUSE_RES;
+			CamAng.y -= m_dx * ROT_SPEED / MOUSE_RES;
+			CamAng.x -= m_dy * ROT_SPEED / MOUSE_RES;
 		}
+		/*
+		if (hideMouse) {
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+			hideMouse = false; isMouseHidden = true;
+		}
+		if (showMouse) {
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			showMouse = false; isMouseHidden = false;
+		}
+		CamAng.y += m_dx * ROT_SPEED / MOUSE_RES;
+		CamAng.x += m_dy * ROT_SPEED / MOUSE_RES;
+		*/
 
 		if (glfwGetKey(window, GLFW_KEY_LEFT)) {
 			CamAng.y += deltaT * ROT_SPEED;
@@ -838,14 +870,21 @@ class MyProject : public BaseProject {
 			CamPos -= MOVE_SPEED * glm::vec3(glm::rotate(glm::mat4(1.0f), CamAng.y,
 				glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec4(0, 0, 1, 1)) * deltaT;
 		}
-		
+
 		if (glfwGetKey(window, GLFW_KEY_F)) {
 			CamPos -= MOVE_SPEED * glm::vec3(0, 1, 0) * deltaT;
 		}
 		if (glfwGetKey(window, GLFW_KEY_R)) {
 			CamPos += MOVE_SPEED * glm::vec3(0, 1, 0) * deltaT;
 		}
-		
+
+		/*
+		if (glfwGetKey(window, GLFW_KEY_ESCAPE)) {
+			if (isMouseHidden) showMouse = true;
+			else hideMouse = true;
+		}
+		*/
+
 		//---------------Limits-----------//
 		/*
 		if (CamPos.x > 5.0f || CamPos.x < -5.0f || CamPos.z < -2.0f || CamPos.z > 10.0f) {
@@ -875,7 +914,7 @@ class MyProject : public BaseProject {
 		UniformBufferObject ubo_museum{};
 		ubo_museum.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
-			glm::scale(glm::mat4(1.0f),glm::vec3(2.2f,1.5f,2.2f));
+			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
 
 		// museum ubo
 		vkMapMemory(device, DS_Museum.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo_museum), 0, &data);
@@ -891,7 +930,7 @@ class MyProject : public BaseProject {
 		memcpy(data, &ubo_platform, sizeof(ubo_platform));
 		vkUnmapMemory(device, DS_Platform.uniformBuffersMemory[0][currentImage]);
 
-	
+		/*
 		copyInMemory(Sunday, currentImage, Sunday.ubo, data, device);
 		copyInMemory(StarringNight, currentImage, StarringNight.ubo, data, device);
 		copyInMemory(VanGogh, currentImage, VanGogh.ubo, data, device);
@@ -932,9 +971,13 @@ class MyProject : public BaseProject {
 		copyInMemory(Matisse2, currentImage, Matisse2.ubo, data, device);
 		copyInMemory(Fourth1, currentImage, Fourth1.ubo, data, device);
 		copyInMemory(Fourth2, currentImage, Fourth2.ubo, data, device);
-
+		*/
 		// skybox -> ma se tanto è costante una volta che lo ho copiato non rimane li per sempre?
 		skybox.updateVkMemory(device, currentImage, data);
+	}
+
+	void calculateIntersection() {
+
 	}
 };
 
