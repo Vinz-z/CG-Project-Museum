@@ -194,8 +194,8 @@ class MyProject : public BaseProject {
 	protected:
 	// Here you list all the Vulkan objects you need:
 	// Camera
-		glm::vec3 CamAng = glm::vec3(0.0f);
-		glm::vec3 CamPos = glm::vec3(-0.2f, 0.95f, 14.5f);
+	glm::vec3 CamAng = glm::vec3(0.0f);
+	glm::vec3 CamPos = glm::vec3(-0.2f, 0.95f, 14.5f);
 
 	// Descriptor Layouts [what will be passed to the shaders]
 	DescriptorSetLayout DSL_global;
@@ -217,13 +217,11 @@ class MyProject : public BaseProject {
 
 	DescriptorSet DS_global; // used for cam and light points
 
-	//Statues
+
 	Statue Venus_Milo;
 	Statue David;
 	Statue Discobolus;
-	Statue Among_Us;
 
-	//Pictures
 	Picture Sunday;
 	Picture StarringNight;
 	Picture VanGogh;
@@ -266,11 +264,6 @@ class MyProject : public BaseProject {
 	Texture T_Platform;
 	DescriptorSet DS_Platform;
 
-	//Floor
-	Model M_Floor;
-	Texture T_Floor;
-	DescriptorSet DS_Floor;
-
 	Skybox skybox;
 	
 	// Here you set the main application parameters
@@ -283,7 +276,7 @@ class MyProject : public BaseProject {
 		
 		// Descriptor pool sizes  !!!!
 		uniformBlocksInPool = 2;
-		texturesInPool = 33;
+		texturesInPool = 31;
 		setsInPool = texturesInPool+10;
 	}
 	
@@ -352,16 +345,14 @@ class MyProject : public BaseProject {
 		M_Platform.init(this, MODEL_PATH + "Floating_Platform.obj");
 		T_Platform.init(this, TEXTURE_PATH + "Floating_Platform.png");
 		DS_Platform.init(this, &DSL_museum, {
+			// the second parameter, is a pointer to the Uniform Set Layout of this set
+			// the last parameter is an array, with one element per binding of the set.
+			// first  elmenet : the binding number
+			// second element : UNIFORM or TEXTURE (an enum) depending on the type
+			// third  element : only for UNIFORMs, the size of the corresponding C++ object
+			// fourth element : only for TEXTUREs, the pointer to the corresponding texture object
 				{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
 				{1, TEXTURE, 0, &T_Platform},
-			});
-		
-		//Floor
-		M_Floor.init(this, MODEL_PATH + "Floor.obj");
-		T_Floor.init(this, TEXTURE_PATH + "Floor.jpg");
-		DS_Floor.init(this, &DSL_museum, {
-				{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-				{1, TEXTURE, 0, &T_Floor},
 			});
 		
 
@@ -430,7 +421,7 @@ class MyProject : public BaseProject {
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.007f, 0.007f, 0.007f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.777f, 1.0f));
-		Manet_Dejeuner.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Manet_Dejeuner.png", temp);
+		Manet_Dejeuner.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Manet_Dejeuner.jpg", temp);
 		
 		
 		//Espressionismo
@@ -504,11 +495,6 @@ class MyProject : public BaseProject {
 			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.007f, 0.007f, 0.007f));
 		Discobolus.init(&DSL_statue, this, MODEL_PATH + "Discobolus.obj", TEXTURE_PATH + "Discobolus.jpg", temp);
-		
-		temp = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, 0.05f, 1.0f))*
-			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-		Among_Us.init(&DSL_statue, this, MODEL_PATH + "Among_Us.obj", TEXTURE_PATH + "Among_Us.png", temp);
 
 		//Signals
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(4.15f, 2.0f, 10.9f))*
@@ -654,10 +640,6 @@ class MyProject : public BaseProject {
 		DS_Platform.cleanup();
 		T_Platform.cleanup();
 		M_Platform.cleanup();
-		
-		DS_Floor.cleanup();
-		T_Floor.cleanup();
-		M_Floor.cleanup();
 
 		Sunday.cleanup();
 		StarringNight.cleanup();
@@ -681,7 +663,6 @@ class MyProject : public BaseProject {
 		Venus_Milo.cleanup();
 		David.cleanup();
 		Discobolus.cleanup();
-		Among_Us.cleanup();
 
 		Dalì1.cleanup();
 		Dalì2.cleanup();
@@ -779,7 +760,6 @@ class MyProject : public BaseProject {
 		Venus_Milo.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
 		David.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
 		Discobolus.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
-		Among_Us.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
 
 
 		Dalì1.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
@@ -812,17 +792,6 @@ class MyProject : public BaseProject {
 			museumPipeline.pipelineLayout, 1, 1, &DS_Platform.descriptorSets[currentImage],
 			0, nullptr);
 		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(M_Platform.indices.size()), 1, 0, 0, 0);
-
-		//------------Floor-------------
-		//------------Platform--------------
-		VkBuffer vertexBuffersF[] = { M_Floor.vertexBuffer };
-		VkDeviceSize offsetsF[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffersF, offsetsF);
-		vkCmdBindIndexBuffer(commandBuffer, M_Platform.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			museumPipeline.pipelineLayout, 1, 1, &DS_Floor.descriptorSets[currentImage],
-			0, nullptr);
-		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(M_Floor.indices.size()), 1, 0, 0, 0);
 	}
 
 	// Here is where you update the uniforms.
@@ -922,21 +891,6 @@ class MyProject : public BaseProject {
 			CamPos = oldCamPos;
 		}*/
 
-		/*
-		printf("Dance x: %f\n", TheDance.pco.worldMat[3][0]);
-		printf("CamPos: %f\n", (CamPos.x + 0.01f));
-		printf("Position: %f\n", glm::abs(CamPos.x + 0.01f) - glm::abs(TheDance.pco.worldMat[3][0]));
-		
-		if (abs(CamPos.x) + 1.0f >= abs(TheDance.pco.worldMat[3][0])) {
-			printf("Collision!\n");
-			CamPos = oldCamPos;
-		}
-		else {
-			printf("No Collision!\n");
-		}
-		*/
-
-
 		glm::mat4 CamMat = glm::translate(glm::transpose(glm::mat4(CamDir)), -CamPos);
 
 		glm::mat4 Prj = glm::perspective(glm::radians(60.0f),
@@ -958,11 +912,9 @@ class MyProject : public BaseProject {
 
 		// meglio creare un ubo per ogni binding così non facciamo casino e li riconosciamo dai nomi
 		UniformBufferObject ubo_museum{};
-		
 		ubo_museum.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
-			
 
 		// museum ubo
 		vkMapMemory(device, DS_Museum.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo_museum), 0, &data);
@@ -977,16 +929,6 @@ class MyProject : public BaseProject {
 		vkMapMemory(device, DS_Platform.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo_platform), 0, &data);
 		memcpy(data, &ubo_platform, sizeof(ubo_platform));
 		vkUnmapMemory(device, DS_Platform.uniformBuffersMemory[0][currentImage]);
-
-		//Platform ubo
-		UniformBufferObject ubo_floor{};
-		ubo_floor.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
-			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
-
-		vkMapMemory(device, DS_Floor.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo_floor), 0, &data);
-		memcpy(data, &ubo_floor, sizeof(ubo_floor));
-		vkUnmapMemory(device, DS_Floor.uniformBuffersMemory[0][currentImage]);
 
 		/*
 		copyInMemory(Sunday, currentImage, Sunday.ubo, data, device);
