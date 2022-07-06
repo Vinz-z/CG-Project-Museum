@@ -271,6 +271,8 @@ class MyProject : public BaseProject {
 	Texture T_Floor;
 	DescriptorSet DS_Floor;
 
+
+
 	Skybox skybox;
 	
 	// Here you set the main application parameters
