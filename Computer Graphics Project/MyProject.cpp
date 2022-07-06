@@ -9,6 +9,9 @@ const std::string TEXTURE_PATH = "textures/";
 struct GlobalUniformBufferObject {
 	alignas(16) glm::mat4 view; // alignas lo usa cpp per allineare i byte della matrice... 
 	alignas(16) glm::mat4 proj; // la shader puo avere problemi con dei padding tra campi di una struttura
+	alignas(16) glm::vec3 lightPos;
+	alignas(16) glm::vec3 lightColor;
+	alignas(16) glm::vec4 coneInOutDecayExp;
 };
 
 struct UniformBufferObject {
@@ -950,6 +953,9 @@ class MyProject : public BaseProject {
 		GlobalUniformBufferObject gubo{};
 		gubo.view = CamMat;
 		gubo.proj = Prj;
+		gubo.lightPos = glm::vec3(0.0f, 1.3f, -0.5f);
+		gubo.lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
+		gubo.coneInOutDecayExp = glm::vec4(0.9f, 0.92f, 0.5f, 1.0f);
 
 		// gubo
 		vkMapMemory(device, DS_global.uniformBuffersMemory[0][currentImage], 0, sizeof(gubo), 0, &data);
