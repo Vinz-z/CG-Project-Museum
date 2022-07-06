@@ -27,6 +27,30 @@ struct Picture {
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
 };
 
+struct Statue {
+	Model model;
+	Texture texture;
+	DescriptorSet descSet;
+
+	PushConstantObject pco;
+
+	void cleanup();
+	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position);
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+};
+
+struct Environment {
+	Model model;
+	Texture texture;
+	DescriptorSet descSet;
+
+	PushConstantObject pco;
+
+	void cleanup();
+	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position);
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+};
+
 void Picture::cleanup(){
 	descSet.cleanup();
 	texture.cleanup();
@@ -61,6 +85,40 @@ void Picture::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentIm
 	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 }
 
+void Environment::cleanup() {
+	descSet.cleanup();
+	texture.cleanup();
+	model.cleanup();
+}
+
+void Environment::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position) {
+	model.init(bs, modelString);
+	texture.init(bs, textureString);
+	descSet.init(bs, DSL, {
+		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+		{1, TEXTURE, 0, &texture}
+		});
+	pco.worldMat = position;
+}
+
+void Environment::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
+	VkBuffer vertexBuffers[] = { model.vertexBuffer };
+	VkDeviceSize offsets[] = { 0 };
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
+		0, nullptr);
+
+	// push constant before drawing the picture
+	vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+		0, sizeof(PushConstantObject), &pco
+	);
+
+	// draw the picture
+	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+}
+
 void copyInMemory(Picture picture, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
 	vkMapMemory(device, picture.descSet.uniformBuffersMemory[0][currentImage], 0,
 		sizeof(ubo), 0, &data);
@@ -68,17 +126,7 @@ void copyInMemory(Picture picture, int currentImage, UniformBufferObject ubo, vo
 	vkUnmapMemory(device, picture.descSet.uniformBuffersMemory[0][currentImage]);
 };
 
-struct Statue {
-	Model model;
-	Texture texture;
-	DescriptorSet descSet;
 
-	PushConstantObject pco;
-
-	void cleanup();
-	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position);
-	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
-};
 
 void Statue::cleanup() {
 	descSet.cleanup();
@@ -189,6 +237,8 @@ void Skybox::init(BaseProject *bp, DescriptorSetLayout *global) {
 	ubo.model = glm::scale(glm::mat4(1.0f), glm::vec3(50, 50, 50));
 }
 
+
+
 class MyProject : public BaseProject {
 
 	protected:
@@ -210,10 +260,9 @@ class MyProject : public BaseProject {
 	Pipeline picturePipeline;
 	Pipeline statuePipeline;
 
-	// Models, textures and Descriptors (values assigned to the uniforms)
-	Model M_Museum;
-	Texture T_Museum;
-	DescriptorSet DS_Museum; //Instance of DSL_museum
+	Environment Museum;
+	Environment Floor;
+	Environment Island;
 
 	DescriptorSet DS_global; // used for cam and light points
 
@@ -261,18 +310,6 @@ class MyProject : public BaseProject {
 	Picture Fourth1;
 	Picture Fourth2;
 
-	//Platform
-	Model M_Platform;
-	Texture T_Platform;
-	DescriptorSet DS_Platform;
-
-	//Floor
-	Model M_Floor;
-	Texture T_Floor;
-	DescriptorSet DS_Floor;
-
-
-
 	Skybox skybox;
 	
 	// Here you set the main application parameters
@@ -296,6 +333,7 @@ class MyProject : public BaseProject {
 		double halfw = windowWidth * 1.0 / 2;
 		double halfh = windowHeight * 1.0 / 2;
 		glfwGetCursorPos(window, &halfw, &halfh);
+		glm::mat4 temp = glm::mat4(1.0f);
 
 		// Descriptor Layouts [what will be passed to the shaders]
 		DSL_museum.init(this, {
@@ -336,40 +374,27 @@ class MyProject : public BaseProject {
 		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_global, &DSL_museum});
 		statuePipeline.init(this, "shaders/statue_vert.spv", "shaders/statue_frag.spv", {&DSL_global, &DSL_statue});
 
-		// Models, textures and Descriptors (values assigned to the uniforms)
-		M_Museum.init(this, MODEL_PATH + "museumTri.obj");
-		T_Museum.init(this, TEXTURE_PATH + "wall.jpg");
-		DS_Museum.init(this, &DSL_museum, {
-		// the second parameter, is a pointer to the Uniform Set Layout of this set
-		// the last parameter is an array, with one element per binding of the set.
-		// first  elmenet : the binding number
-		// second element : UNIFORM or TEXTURE (an enum) depending on the type
-		// third  element : only for UNIFORMs, the size of the corresponding C++ object
-		// fourth element : only for TEXTUREs, the pointer to the corresponding texture object
-			{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-			{1, TEXTURE, 0, &T_Museum},
-		});
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
 
-	
-		M_Platform.init(this, MODEL_PATH + "Floating_Platform.obj");
-		T_Platform.init(this, TEXTURE_PATH + "Floating_Platform.png");
-		DS_Platform.init(this, &DSL_museum, {
-				{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-				{1, TEXTURE, 0, &T_Platform},
-			});
+		Museum.init(&DSL_museum, this, MODEL_PATH + "museumTri.obj", TEXTURE_PATH + "wall.jpg", temp);
 		
-		//Floor
-		M_Floor.init(this, MODEL_PATH + "Floor.obj");
-		T_Floor.init(this, TEXTURE_PATH + "Floor.jpg");
-		DS_Floor.init(this, &DSL_museum, {
-				{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-				{1, TEXTURE, 0, &T_Floor},
-			});
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
+
+		Floor.init(&DSL_museum, this, MODEL_PATH + "Floor.obj", TEXTURE_PATH + "Floor.jpg", temp);
 		
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.8f, -6.47f, -1.7f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(0.28f, 0.25f, 0.28f));
+
+		Island.init(&DSL_museum, this, MODEL_PATH + "Floating_Platform.obj", TEXTURE_PATH + "Floating_Platform.png", temp);
+
 
 		//-----Pictures----//
 		//Matisse
-		glm::mat4 temp = glm::translate(glm::mat4(1.0f), glm::vec3(-1.9f, 0.9f, 12.5f))*
+		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-1.9f, 0.9f, 12.5f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.009f, 0.009f, 0.009f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
 		TheDance.init(&DSL_pic, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "TheDance.png", temp);
@@ -649,17 +674,9 @@ class MyProject : public BaseProject {
 
 	// Here you destroy all the objects you created!		
 	void localCleanup() {
-		DS_Museum.cleanup();
-		T_Museum.cleanup();
-		M_Museum.cleanup();
-
-		DS_Platform.cleanup();
-		T_Platform.cleanup();
-		M_Platform.cleanup();
-		
-		DS_Floor.cleanup();
-		T_Floor.cleanup();
-		M_Floor.cleanup();
+		Museum.cleanup();
+		Floor.cleanup();
+		Island.cleanup();
 
 		Sunday.cleanup();
 		StarringNight.cleanup();
@@ -717,33 +734,20 @@ class MyProject : public BaseProject {
 	// with their buffers and textures
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage) {
 		
-// ---------- museum command buffer ----------
-
+// ---------- Environment command buffer ----------
+		
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 				museumPipeline.graphicsPipeline);
-	
-		VkBuffer vertexBuffers[] = {M_Museum.vertexBuffer};
-		// property .vertexBuffer of models, contains the VkBuffer handle to its vertex buffer
-		VkDeviceSize offsets[] = {0};
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-		// property .indexBuffer of models, contains the VkBuffer handle to its index buffer
-		vkCmdBindIndexBuffer(commandBuffer, M_Museum.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-		// property .pipelineLayout of a pipeline contains its layout.
-		// property .descriptorSets of a descriptor set contains its elements.
-		vkCmdBindDescriptorSets(commandBuffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			museumPipeline.pipelineLayout, 1, 1, &DS_Museum.descriptorSets[currentImage], //(?)
-			0, nullptr);
 
 		vkCmdBindDescriptorSets(commandBuffer,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
 			museumPipeline.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
 			0, nullptr);
-						
-		// property .indices.size() of models, contains the number of triangles * 3 of the mesh.
-		vkCmdDrawIndexed(commandBuffer,
-					static_cast<uint32_t>(M_Museum.indices.size()), 1, 0, 0, 0);
+
+		Museum.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+		Floor.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+		Island.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+
 
 // --------------------------------------------
 
@@ -777,6 +781,7 @@ class MyProject : public BaseProject {
 		Cigni.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 		Donna_Cappello.populateCommandBuffer(commandBuffer, currentImage, picturePipeline);
 
+
 		// ---------- statues command buffer ----------
 		Venus_Milo.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
 		David.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
@@ -804,27 +809,6 @@ class MyProject : public BaseProject {
 
 		// skybox
 		skybox.populateCommandBuffer(commandBuffer, currentImage, DS_global);
-
-		//------------Platform--------------
-		VkBuffer vertexBuffersP[] = { M_Platform.vertexBuffer };
-		VkDeviceSize offsetsP[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffersP, offsetsP);
-		vkCmdBindIndexBuffer(commandBuffer, M_Platform.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			museumPipeline.pipelineLayout, 1, 1, &DS_Platform.descriptorSets[currentImage],
-			0, nullptr);
-		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(M_Platform.indices.size()), 1, 0, 0, 0);
-
-		//------------Floor-------------
-		//------------Platform--------------
-		VkBuffer vertexBuffersF[] = { M_Floor.vertexBuffer };
-		VkDeviceSize offsetsF[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffersF, offsetsF);
-		vkCmdBindIndexBuffer(commandBuffer, M_Platform.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			museumPipeline.pipelineLayout, 1, 1, &DS_Floor.descriptorSets[currentImage],
-			0, nullptr);
-		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(M_Floor.indices.size()), 1, 0, 0, 0);
 	}
 
 	// Here is where you update the uniforms.
@@ -958,80 +942,6 @@ class MyProject : public BaseProject {
 		memcpy(data, &gubo, sizeof(gubo));
 		vkUnmapMemory(device, DS_global.uniformBuffersMemory[0][currentImage]);
 
-		// meglio creare un ubo per ogni binding così non facciamo casino e li riconosciamo dai nomi
-		UniformBufferObject ubo_museum{};
-		
-		ubo_museum.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
-			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
-			
-
-		// museum ubo
-		vkMapMemory(device, DS_Museum.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo_museum), 0, &data);
-		memcpy(data, &ubo_museum, sizeof(ubo_museum));
-		vkUnmapMemory(device, DS_Museum.uniformBuffersMemory[0][currentImage]);
-
-		//Platform ubo
-		UniformBufferObject ubo_platform{};
-		ubo_platform.model = glm::translate(glm::mat4(1.0f), glm::vec3(2.8f, -6.47f, -1.7f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(0.28f, 0.25f, 0.28f));
-
-		vkMapMemory(device, DS_Platform.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo_platform), 0, &data);
-		memcpy(data, &ubo_platform, sizeof(ubo_platform));
-		vkUnmapMemory(device, DS_Platform.uniformBuffersMemory[0][currentImage]);
-
-		//Platform ubo
-		UniformBufferObject ubo_floor{};
-		ubo_floor.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
-			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
-
-		vkMapMemory(device, DS_Floor.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo_floor), 0, &data);
-		memcpy(data, &ubo_floor, sizeof(ubo_floor));
-		vkUnmapMemory(device, DS_Floor.uniformBuffersMemory[0][currentImage]);
-
-		/*
-		copyInMemory(Sunday, currentImage, Sunday.ubo, data, device);
-		copyInMemory(StarringNight, currentImage, StarringNight.ubo, data, device);
-		copyInMemory(VanGogh, currentImage, VanGogh.ubo, data, device);
-		copyInMemory(Munch_Scream, currentImage, Munch_Scream.ubo, data, device);
-		copyInMemory(Guernica, currentImage, Guernica.ubo, data, device);
-		copyInMemory(Boulevard_monmarte, currentImage, Boulevard_monmarte.ubo, data, device);
-		copyInMemory(Volpedo_FourthEstate, currentImage, Volpedo_FourthEstate.ubo, data, device);
-		copyInMemory(Persistenza, currentImage, Persistenza.ubo, data, device);
-		copyInMemory(Impression_Sunrise, currentImage, Impression_Sunrise.ubo, data, device);
-		copyInMemory(TheDance, currentImage, TheDance.ubo, data, device);
-		copyInMemory(Manet_Dejeuner, currentImage, Manet_Dejeuner.ubo, data, device);
-		copyInMemory(Girasoli, currentImage, Girasoli.ubo, data, device);
-		copyInMemory(La_Camera, currentImage, La_Camera.ubo, data, device);
-		copyInMemory(Composizione_VI, currentImage, Composizione_VI.ubo, data, device);
-		copyInMemory(Cavalli, currentImage, Cavalli.ubo, data, device);
-		copyInMemory(Dream, currentImage, Dream.ubo, data, device);
-		copyInMemory(Cigni, currentImage, Cigni.ubo, data, device);
-		copyInMemory(Donna_Cappello, currentImage, Donna_Cappello.ubo, data, device);
-
-		copyInMemory(Venus_Milo, currentImage, Venus_Milo.ubo, data, device);
-		copyInMemory(David, currentImage, David.ubo, data, device);
-		copyInMemory(Discobolus, currentImage, Discobolus.ubo, data, device);
-
-
-		copyInMemory(Dalì1, currentImage, Dalì1.ubo, data, device);
-		copyInMemory(Dalì2, currentImage, Dalì2.ubo, data, device);
-		copyInMemory(Impressionism1, currentImage, Impressionism1.ubo, data, device);
-		copyInMemory(Impressionism2, currentImage, Impressionism2.ubo, data, device);
-		copyInMemory(VanGoghSign1, currentImage, VanGoghSign1.ubo, data, device);
-		copyInMemory(VanGoghSign2, currentImage, VanGoghSign2.ubo, data, device);
-		copyInMemory(Expressionism1, currentImage, Expressionism1.ubo, data, device);
-		copyInMemory(Expressionism2, currentImage, Expressionism2.ubo, data, device);
-		copyInMemory(GuernicaSign1, currentImage, GuernicaSign1.ubo, data, device);
-		copyInMemory(GuernicaSign2, currentImage, GuernicaSign2.ubo, data, device);
-		copyInMemory(Sculptures1, currentImage, Sculptures1.ubo, data, device);
-		copyInMemory(Sculptures2, currentImage, Sculptures2.ubo, data, device);
-		copyInMemory(Matisse1, currentImage, Matisse1.ubo, data, device);
-		copyInMemory(Matisse2, currentImage, Matisse2.ubo, data, device);
-		copyInMemory(Fourth1, currentImage, Fourth1.ubo, data, device);
-		copyInMemory(Fourth2, currentImage, Fourth2.ubo, data, device);
-		*/
 		// skybox -> ma se tanto è costante una volta che lo ho copiato non rimane li per sempre?
 		skybox.updateVkMemory(device, currentImage, data);
 	}
