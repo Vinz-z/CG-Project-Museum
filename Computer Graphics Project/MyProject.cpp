@@ -1036,8 +1036,8 @@ class MyProject : public BaseProject {
 
 		//Update the Camera
 		GlobalUniformBufferObject gubo{};
-		gubo.view = CamMat;
-		gubo.proj = Prj;
+		gubo.proj = player.camera.getProjectionMatrix();
+		gubo.view = player.camera.getCameraMatrix();
 		gubo.lightPos[0] = glm::vec3(1.0f, 2.0f, 13.0f); //point lights
 		gubo.lightPos[1] = glm::vec3(1.0f, 2.0f, 8.f);
 		gubo.lightPos[2] = glm::vec3(1.0f, 2.0f, 3.7f);
