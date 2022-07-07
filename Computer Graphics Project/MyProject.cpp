@@ -9,8 +9,10 @@ const std::string TEXTURE_PATH = "textures/";
 struct GlobalUniformBufferObject {
 	alignas(16) glm::mat4 view; // alignas lo usa cpp per allineare i byte della matrice... 
 	alignas(16) glm::mat4 proj; // la shader puo avere problemi con dei padding tra campi di una struttura
-	alignas(16) glm::vec3 lightPos[3];
+	alignas(16) glm::vec3 lightPos[8];
 	alignas(16) glm::vec3 lightColor;
+	alignas(16) glm::vec3 sunLightDir;
+	alignas(16) glm::vec3 sunLightColor;
 	alignas(16) glm::vec4 coneInOutDecayExp;
 };
 
@@ -903,11 +905,18 @@ class MyProject : public BaseProject {
 		GlobalUniformBufferObject gubo{};
 		gubo.view = CamMat;
 		gubo.proj = Prj;
-		gubo.lightPos[0] = glm::vec3(5.0f, 1.5f, 12.3f);
-		gubo.lightPos[1] = glm::vec3(-0.5f, 1.5f, 0.0f);
-		gubo.lightPos[2] = glm::vec3(-0.2f,1.5f, 12.5f);
+		gubo.lightPos[0] = glm::vec3(1.0f, 2.0f, 13.0f); //point lights
+		gubo.lightPos[1] = glm::vec3(1.0f, 2.0f, 8.f);
+		gubo.lightPos[2] = glm::vec3(1.0f, 2.0f, 3.7f);
+		gubo.lightPos[3] = glm::vec3(1.0f, 2.0f, -1.0f);
+		gubo.lightPos[4] = glm::vec3(5.0f, 2.05f, 13.0f);
+		gubo.lightPos[5] = glm::vec3(5.0f, 2.0f, 8.4f);
+		gubo.lightPos[6] = glm::vec3(5.0f, 2.0f, 3.7f);
+		gubo.lightPos[7] = glm::vec3(5.0f, 2.0f, -1.0f);
 		gubo.lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
-		gubo.coneInOutDecayExp = glm::vec4(0.9f, 0.92f, 0.5f, 1.0f);
+		gubo.sunLightDir = glm::vec3(cos(glm::radians(135.0f)), sin(glm::radians(135.0f)), 0.0f); //sun (direct) light
+		gubo.sunLightColor = glm::vec3(0.99f,0.9f,0.44f);
+		gubo.coneInOutDecayExp = glm::vec4(0.9f, 0.92f, 0.5f, 1.5f);
 
 		// gubo
 		vkMapMemory(device, DS_global.uniformBuffersMemory[0][currentImage], 0, sizeof(gubo), 0, &data);
