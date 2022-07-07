@@ -11,25 +11,25 @@ layout(location = 0) out vec4 outColor;
 layout(set = 0, binding = 0) uniform GlobalUniformBufferObject {
 	mat4 view;
 	mat4 proj;
-	vec3 lightPos;
+	vec3 lightPos1;
+	vec3 lightPos2;
 	vec3 lightColor;
 	vec4 coneInOutDecayExp;
 } gubo;
 
-vec3 point_light_dir(vec3 pos) {
+vec3 point_light_dir(vec3 lightPos ,vec3 pos) {
 	// Point light direction
-	return normalize(gubo.lightPos - pos);
+	return normalize(lightPos - pos);
 }
 
-vec3 point_light_color(vec3 pos) {
+vec3 point_light_color(vec3 lightPos, vec3 pos) {
 	// Point light color
-	return gubo.lightColor * pow(gubo.coneInOutDecayExp.z/length(gubo.lightPos - pos),gubo.coneInOutDecayExp.w);
+	return gubo.lightColor * pow(gubo.coneInOutDecayExp.z/length(lightPos - pos),gubo.coneInOutDecayExp.w);
 }
 
 void main() {
 	const vec3  diffColor = texture(texSampler, fragTexCoord).rgb;
-	const vec3  specColor = vec3(1.0f, 1.0f, 1.0f);
-	const float specPower = 150.0f;
+	const float specPower = 64.0f;
 	//const vec3  L = vec3(-0.4830f, 0.8365f, -0.2588f);
 	const vec3  L = vec3(0.0f, -0.5f, 0.0f);
 	//const vec3 topColor = vec3(0.325f,0.847f,0.9843f);
@@ -39,14 +39,19 @@ void main() {
 	const vec3 bottomColor = vec3(0.1f, 0.1f, 0.1f);
 
 	//point light
-	vec3 lD;	// light direction from the light model
-	vec3 lC;	// light color and intensity from the light model
-	
-	lD = point_light_dir(fragPos) ;
-	lC = point_light_color(fragPos);
+	vec3 lD1;	// light direction from the light model
+	vec3 lD2;
+	vec3 lC1;	// light color and intensity from the light model
+	vec3 lC2;
+
+	lD1 = point_light_dir(gubo.lightPos1, fragPos) ;
+	lD2 = point_light_dir(gubo.lightPos2, fragPos);
+	lC1 = point_light_color(gubo.lightPos1, fragPos);
+	lC2 = point_light_color(gubo.lightPos2, fragPos);
 	
 	vec3 N = normalize(fragNorm);
-	vec3 R = -reflect(lD, N);
+	vec3 R1 = -reflect(lD1, N);
+	vec3 R2 = -reflect(lD2, N);
 	vec3 V = normalize((gubo.view[3]).xyz - fragPos);
 	float sigma = 0.5;
 	
@@ -64,9 +69,12 @@ void main() {
 
 
 	// Lambert diffuse
-	vec3 diffuse  = diffColor * max(dot(N,lD), 0.0f);
+	vec3 diffuse1  = diffColor * max(dot(N,lD1), 0.0f);
+	vec3 diffuse2  = diffColor * max(dot(N,lD2), 0.0f);
 	// Phong specular
-	vec3 specular = specColor * pow(max(dot(R,V), 0.0f), specPower);
+	vec3 specular1 = vec3(pow(max(dot(R1,V), 0.0f), specPower));
+	vec3 specular2 = vec3(pow(max(dot(R2,V), 0.0f), specPower));
+
 
 
 	// Hemispheric ambient
@@ -77,5 +85,5 @@ void main() {
 
 	
 	//outColor = vec4(clamp(ambient + diffuse + specular, vec3(0.0f), vec3(1.0f)), 1.0f);
-	outColor = vec4((diffuse + specular) * lC, 1.0f);
+	outColor = vec4((diffuse1 + specular1) * lC1, 1.0f) + vec4((diffuse2 + specular2) * lC2, 1.0f);
 }

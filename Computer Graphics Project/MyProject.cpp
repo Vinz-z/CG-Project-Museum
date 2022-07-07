@@ -9,7 +9,7 @@ const std::string TEXTURE_PATH = "textures/";
 struct GlobalUniformBufferObject {
 	alignas(16) glm::mat4 view; // alignas lo usa cpp per allineare i byte della matrice... 
 	alignas(16) glm::mat4 proj; // la shader puo avere problemi con dei padding tra campi di una struttura
-	alignas(16) glm::vec3 lightPos;
+	alignas(16) glm::vec3 lightPos[2];
 	alignas(16) glm::vec3 lightColor;
 	alignas(16) glm::vec4 coneInOutDecayExp;
 };
@@ -255,13 +255,8 @@ class MyProject : public BaseProject {
 	DescriptorSetLayout DSL_museum; //Object descriptor
 	DescriptorSetLayout DSL_skybox;
 
-//	DescriptorSetLayout DSL_museum;
-	DescriptorSetLayout DSL_statue;
-
 	// Pipelines
 	Pipeline museumPipeline;
-	//Pipeline museumPipeline;
-	Pipeline statuePipeline;
 
 	Environment Museum;
 	Environment Floor;
@@ -347,16 +342,6 @@ class MyProject : public BaseProject {
 					{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
 					{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
 				  });
-		
-		
-		DSL_statue.init(this, {
-					// this array contains the binding:
-					// first  element : the binding number
-					// second element : the time of element (buffer or texture)
-					// third  element : the pipeline stage where it will be used
-					{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
-					{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
-				  });
 
 		DSL_global.init(this, {
 			{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS},
@@ -365,9 +350,7 @@ class MyProject : public BaseProject {
 		// Pipelines [Shader couples]
 		// The last array, is a vector of pointer to the layouts of the sets that will
 		// be used in this pipeline. The first element will be set 0, and so on..
-		//museumPipeline.init(this, "shaders/picture_vert.spv", "shaders/picture_frag.spv", { &DSL_global, &DSL_museum });
 		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_global, &DSL_museum});
-		statuePipeline.init(this, "shaders/skyboxVert.spv", "shaders/skyboxFrag.spv", {&DSL_global, &DSL_statue});
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
@@ -513,26 +496,26 @@ class MyProject : public BaseProject {
 			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.007f, 0.007f, 0.007f));
-		Venus_Milo.init(&DSL_statue, this, MODEL_PATH + "Venus_Milo.obj", TEXTURE_PATH + "Venus_Milo.jpg", temp);
+		Venus_Milo.init(&DSL_museum, this, MODEL_PATH + "Venus_Milo.obj", TEXTURE_PATH + "Venus_Milo.jpg", temp);
 		
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.05f, -0.5f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.003f, 0.003f, 0.003f));
-		David.init(&DSL_statue, this, MODEL_PATH + "David.obj", TEXTURE_PATH + "David.jpg", temp);
+		David.init(&DSL_museum, this, MODEL_PATH + "David.obj", TEXTURE_PATH + "David.jpg", temp);
 		
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.05f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.007f, 0.007f, 0.007f));
-		Discobolus.init(&DSL_statue, this, MODEL_PATH + "Discobolus.obj", TEXTURE_PATH + "Discobolus.jpg", temp);
+		Discobolus.init(&DSL_museum, this, MODEL_PATH + "Discobolus.obj", TEXTURE_PATH + "Discobolus.jpg", temp);
 		
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, 0.05f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
-		Among_Us.init(&DSL_statue, this, MODEL_PATH + "Among_Us.obj", TEXTURE_PATH + "Among_Us.png", temp);
+		Among_Us.init(&DSL_museum, this, MODEL_PATH + "Among_Us.obj", TEXTURE_PATH + "Among_Us.png", temp);
 
-		//------------Signs------------
+		//Signals
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(4.15f, 2.0f, 10.9f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
@@ -715,8 +698,9 @@ class MyProject : public BaseProject {
 		Fourth2.cleanup();
 
 		DS_global.cleanup();
-		museumPipeline.cleanup();
 
+		museumPipeline.cleanup();
+		museumPipeline.cleanup();
 		DSL_global.cleanup();
 		DSL_museum.cleanup();
 		skybox.cleanup();
@@ -745,16 +729,6 @@ class MyProject : public BaseProject {
 // --------------------------------------------
 
 // ---------- picture command buffer ----------
-		/*
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			museumPipeline.graphicsPipeline);
-
-		//Adding the global set to the picture pipeline
-		vkCmdBindDescriptorSets(commandBuffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			museumPipeline.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
-			0, nullptr);
-			*/
 
 		Sunday.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		StarringNight.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
@@ -775,20 +749,6 @@ class MyProject : public BaseProject {
 		Cigni.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Donna_Cappello.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 
-
-		// ---------- statues command buffer ----------
-		vkCmdBindDescriptorSets(commandBuffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			statuePipeline.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
-			0, nullptr);
-
-		Venus_Milo.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
-		David.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
-		Discobolus.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
-		Among_Us.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
-
-
-		//Signs
 		Dalì1.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Dalì2.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Impressionism1.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
@@ -805,7 +765,14 @@ class MyProject : public BaseProject {
 		Matisse2.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Fourth1.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Fourth2.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			museumPipeline.graphicsPipeline);
 
+		// ---------- statues command buffer ----------
+		Venus_Milo.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+		David.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+		Discobolus.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+		Among_Us.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 
 		// skybox
 		skybox.populateCommandBuffer(commandBuffer, currentImage, DS_global);
@@ -936,25 +903,14 @@ class MyProject : public BaseProject {
 		GlobalUniformBufferObject gubo{};
 		gubo.view = CamMat;
 		gubo.proj = Prj;
-		gubo.lightPos = glm::vec3(4.0f, 1.3f, -0.5f);
+		gubo.lightPos[0] = glm::vec3(5.0f, 1.5f, 12.3f);
+		gubo.lightPos[1] = glm::vec3(-0.5f, 1.5f, 0.0f);
 		gubo.lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
 		gubo.coneInOutDecayExp = glm::vec4(0.9f, 0.92f, 0.5f, 1.0f);
 
 		// gubo
 		vkMapMemory(device, DS_global.uniformBuffersMemory[0][currentImage], 0, sizeof(gubo), 0, &data);
 		memcpy(data, &gubo, sizeof(gubo));
-		vkUnmapMemory(device, DS_global.uniformBuffersMemory[0][currentImage]);
-
-		GlobalUniformBufferObject gubo1{};
-		gubo1.view = CamMat;
-		gubo1.proj = Prj;
-		gubo1.lightPos = glm::vec3(6.0f, 1.3f, 2.0f);
-		gubo1.lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
-		gubo1.coneInOutDecayExp = glm::vec4(0.9f, 0.92f, 0.5f, 1.0f);
-
-		// gubo
-		vkMapMemory(device, DS_global.uniformBuffersMemory[0][currentImage], 0, sizeof(gubo1), 0, &data);
-		memcpy(data, &gubo1, sizeof(gubo1));
 		vkUnmapMemory(device, DS_global.uniformBuffersMemory[0][currentImage]);
 
 		// skybox -> ma se tanto è costante una volta che lo ho copiato non rimane li per sempre?
