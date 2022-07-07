@@ -1,0 +1,58 @@
+{
+    "pictures": [
+        {
+            "title": "The Dance",
+            "src": "TheDance.png",
+            "scale": [0.009, 0.005922, 0.009],
+            "rotate": [0,0,0],
+            "translate": [-1.9, 0.9, 12.5],
+            "description": "streghe nude che compiono un rito satanico - matisse"
+        },{
+            "title": "Donna con cappello",
+            "src": "Donna_Cappello.png",
+            "scale": [0.003, 0.00411, 0.003],
+            "rotate": [0, 180, 0],
+            "translate": [2.3, 0.8,  12.3],
+            "description": "donna con la cappella - matisse"
+        },
+        {
+            "title": "Starring Night",
+            "src": "starringNight.png",
+            "scale": [0.006, 0.00462, 0.006],
+            "rotate": [0, 0, 0],
+            "translate": [-1.9, 0.9, 4.2],
+            "description": "picchio la testa e vedo le stelle - van gogh"
+        },
+        {
+            "title": "Autoritratto di Van Gogh",
+            "src": "VanGogh.png",
+            "scale": [0.002, 0.00248, 0.002],
+            "rotate": [0, 0, 0],
+            "translate": [-1.9, 1.1, 2.4],
+            "description": "scemo senza un orecchio - van gogh"
+        }
+    ],
+    "statue": [
+        {
+            "title": "",
+            "scale": [],
+            "rotate": [],
+            "translate": [],
+            "description": ""
+        },
+        {
+            "title": "",
+            "scale": [],
+            "rotate": [],
+            "translate": [],
+            "description": ""
+        },
+        {
+            "title": "",
+            "scale": [],
+            "rotate": [],
+            "translate": [],
+            "description": ""
+        }
+    ]
+}

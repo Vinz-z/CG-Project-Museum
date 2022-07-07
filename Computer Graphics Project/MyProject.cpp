@@ -1,5 +1,6 @@
 #include "MyProject.hpp";
 #include <list>
+#include <json.hpp>
 
 const std::string MODEL_PATH = "models/";
 const std::string TEXTURE_PATH = "textures/";
@@ -28,9 +29,110 @@ glm::vec3 vectorProjection(glm::vec3 from, glm::vec3 to) {
 				glm::dot(to, to);
 }
 
+struct j_Picture {
+	std::string title;
+	std::string src;
+	std::string description;
+	std::vector<float> translate;
+	std::vector<float> rotate;
+	std::vector<float> scale;
+};
+
+void from_json(const nlohmann::json& j, j_Picture& o) {
+	j.at("title").get_to(o.title);
+	j.at("src").get_to(o.src);
+	j.at("description").get_to(o.description);
+	j.at("translate").get_to(o.translate);
+	j.at("scale").get_to(o.scale);
+	j.at("rotate").get_to(o.rotate);
+}
+
 void printVec(std::string label, glm::vec3 vvv) {
 	std::cout << " + " << label << ": " << vvv[0] << " " << vvv[1] << " " << vvv[2] << std::endl;
 }
+
+struct Ray {
+	glm::vec3 origin;
+	glm::vec3 direction;
+};
+
+struct Triangle {
+	glm::vec3 A;
+	glm::vec3 B;
+	glm::vec3 C;
+	glm::vec3 AB;
+	glm::vec3 AC;
+	glm::vec3  norm;
+
+	Triangle(glm::vec3 a, glm::vec3 b, glm::vec3 c) {
+		this->A = a;
+		this->B = b;
+		this->C = c;
+		this->AB = B - A;
+		this->AC = C - A;
+		norm = glm::cross(AB, AC);
+		//norm.x = norm.x < 0.00001 ? 0.0f : norm.x;
+		//norm.y = norm.y < 0.00001 ? 0.0f : norm.y;
+		//norm.z = norm.z < 0.00001 ? 0.0f : norm.z;
+	}
+
+	std::optional<glm::vec3> lineIntersectInside(Ray ray) {
+		// find the intersection between the plane of the triangle and the line 
+		// of the direction u are moving
+		float d = glm::dot(norm, A);
+		float perp = glm::dot(ray.direction, norm);
+		if (perp == 0) return {};
+		float t = (d - glm::dot(norm, ray.origin)) / perp;
+
+		glm::vec3 intersection = ray.origin + (ray.direction * t);
+
+		// walking on the triangle you must have the intersection always on the same side
+		// check it using dot between edge and point - start edge: the sign need to be always the same
+		//int a = glm::dot(intersection - A, B - A) >= 0;
+		//int b = glm::dot(intersection - B, C - B) >= 0;
+		//int c = glm::dot(intersection - C, A - C) >= 0;
+
+		Triangle a{ A, B, intersection };
+		Triangle b{ B, C, intersection };
+		Triangle c{ C, A, intersection };
+
+		if (glm::dot(glm::normalize(a.norm), glm::normalize(b.norm)) == 1.0f &&
+			glm::dot(glm::normalize(b.norm), glm::normalize(c.norm)) == 1.0f
+			) {
+			return intersection;
+		}
+
+		return {};
+	}
+
+	void print() {
+		printVec("A", A);
+		printVec("B", B);
+		printVec("C", C);
+		printVec("norm", norm);
+	}
+};
+
+struct Clickable {
+	virtual void handleClick() = 0;
+
+	void addTriangle(Triangle t) {
+		body.push_front(t);
+	}
+
+	bool isClicked(Ray ray) {
+		for (Triangle& t : body) {
+			if (t.lineIntersectInside(ray)) return true;
+		}
+
+		return false;
+
+	}
+
+private:
+	std::list<Triangle> body;
+
+};
 
 struct Camera {
 	void init(glm::vec3 angles, glm::vec3 position, float near, float far, float fov, float aspectRatio) {
@@ -72,6 +174,10 @@ struct Camera {
 			glm::vec4(0, 0, 1, 1);
 	}
 
+	Ray getRay() {
+		return { position, getViewDirection() };
+	}
+
 private:
 	glm::vec3 angles;
 	glm::vec3 position;
@@ -80,60 +186,6 @@ private:
 	float fov;
 	glm::mat4 camera;
 	glm::mat4 projection;
-};
-
-struct Triangle {
-	glm::vec3 A;
-	glm::vec3 B;
-	glm::vec3 C;
-	glm::vec3 AB;
-	glm::vec3 AC;
-	glm::vec3  norm;
-
-	Triangle (glm::vec3 a, glm::vec3 b, glm::vec3 c) {
-		this->A = a;
-		this->B = b;
-		this->C = c;
-		this->AB = B - A;
-		this->AC = C - A;
-		norm = glm::cross(AB, AC);
-		//norm.x = norm.x < 0.00001 ? 0.0f : norm.x;
-		//norm.y = norm.y < 0.00001 ? 0.0f : norm.y;
-		//norm.z = norm.z < 0.00001 ? 0.0f : norm.z;
-	}
-
-	bool collide(glm::vec3 pos, glm::vec3 dir) {
-		// find the intersection between the plane of the triangle and the line 
-		// of the direction u are moving
-		float d = glm::dot(norm, A);
-		float perp = glm::dot(dir, norm);
-		if (perp == 0) return false;
-		float t = (d - glm::dot(norm, pos)) / perp;
-
-		glm::vec3 intersection = pos + (dir * t);
-
-		// walking on the triangle you must have the intersection always on the same side
-		// check it using dot between edge and point - start edge: the sign need to be always the same
-		//int a = glm::dot(intersection - A, B - A) >= 0;
-		//int b = glm::dot(intersection - B, C - B) >= 0;
-		//int c = glm::dot(intersection - C, A - C) >= 0;
-
-		Triangle a{ A, B, intersection };
-		Triangle b{ B, C, intersection };
-		Triangle c{ C, A, intersection };
-
-		return
-			glm::dot(glm::normalize(a.norm), glm::normalize(b.norm)) == 1.0f &&
-			glm::dot(glm::normalize(b.norm), glm::normalize(c.norm)) == 1.0f &&
-			glm::length(intersection - pos) <= (glm::length(dir) + 0.1f);
-	}
-
-	void print() {
-		printVec("A", A);
-		printVec("B", B);
-		printVec("C", C);
-		printVec("norm", norm);
-	}
 };
 
 struct Player {
@@ -193,7 +245,11 @@ private:
 
 	void move(glm::vec3 dir) {
 		// check for each boundary if there is a collision -> if yes then cant move in this direction
-		for (Triangle& t : boundaries) { if (t.collide(position, dir)) { return; } }
+		for (Triangle& t : boundaries) {
+			auto intersec = t.lineIntersectInside(Ray{ position, dir });
+			if (intersec && glm::length(*intersec - position) <= (glm::length(dir) + 0.1f)) { return; }
+		}
+
 		position += dir;
 		camera.move(dir);
 	}
@@ -201,7 +257,7 @@ private:
 
 // -------------------- end Player --------------------
 
-struct Statue {
+struct Statue : Clickable {
 	Model model;
 	Texture texture;
 	DescriptorSet descSet;
@@ -211,19 +267,74 @@ struct Statue {
 	void cleanup();
 	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position);
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+	void handleClick();
 };
 
-struct Picture {
+void Statue::handleClick() {
+	std::cout << "è stato cliccato un oggetto senza handler per il click" << std::endl;
+}
+
+struct Picture : Clickable {
 	Model model;
 	Texture texture;
 	DescriptorSet descSet;
 
 	PushConstantObject pco;
+	j_Picture j_pic;
+
+	std::string title;
+	std::string descr;
 
 	void cleanup();
 	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position);
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+	void loadClickArea(std::string file);
+	void handleClick();
+	
+	void setData(std::string title, std::string description) {
+		this->title = title;
+		this->descr = description;
+	}
 };
+
+void Picture::loadClickArea(std::string file) {
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string warn, err;
+
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err,
+		file.c_str())) {
+		throw std::runtime_error(warn + err);
+	}
+
+	for (const auto& shape : shapes) {
+		for (int i = 0; i < shape.mesh.indices.size(); i += 3) {
+			addTriangle(Triangle{
+					pco.worldMat * glm::vec4(
+						attrib.vertices[3 * shape.mesh.indices[i].vertex_index + 0],
+						attrib.vertices[3 * shape.mesh.indices[i].vertex_index + 1],
+						attrib.vertices[3 * shape.mesh.indices[i].vertex_index + 2], 1.0f),
+					pco.worldMat * glm::vec4(
+						attrib.vertices[3 * shape.mesh.indices[i + 1].vertex_index + 0],
+						attrib.vertices[3 * shape.mesh.indices[i + 1].vertex_index + 1],
+						attrib.vertices[3 * shape.mesh.indices[i + 1].vertex_index + 2], 1.0f),
+					pco.worldMat * glm::vec4(
+						attrib.vertices[3 * shape.mesh.indices[i + 2].vertex_index + 0],
+						attrib.vertices[3 * shape.mesh.indices[i + 2].vertex_index + 1],
+						attrib.vertices[3 * shape.mesh.indices[i + 2].vertex_index + 2], 1.0f),
+				});
+		}
+	}
+}
+
+void Picture::handleClick() {
+	std::cout << "----------- click ------------" << std::endl;
+	std::cout << title << std::endl;
+	std::cout << "------------------------------" << std::endl;
+	std::cout << descr << std::endl;
+	std::cout << "-----------   x   ------------" << std::endl;
+}
 
 struct Environment {
 	Model model;
@@ -251,6 +362,8 @@ void Picture::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelS
 		{1, TEXTURE, 0, &texture}
 	});
 	pco.worldMat = position;
+
+	loadClickArea(MODEL_PATH + "planePicture.obj");
 }
 
 void Picture::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
@@ -427,13 +540,10 @@ void Skybox::init(BaseProject *bp, DescriptorSetLayout *global) {
 // -------------------- end Skybox --------------------
 
 class MyProject : public BaseProject {
-	protected:
-	// Here you list all the Vulkan objects you need:
-	// Camera
-	glm::vec3 CamAng = glm::vec3(0.0f);
-	glm::vec3 CamPos = glm::vec3(-0.2f, 0.95f, 14.5f);
-
 	Player player;
+	//std::list<Clickable> artworks;
+	std::list<Picture> pictures;
+	std::list<Statue> statues;
 
 	// Descriptor Layouts [what will be passed to the shaders]
 	DescriptorSetLayout DSL_global;
@@ -554,10 +664,29 @@ class MyProject : public BaseProject {
 
 		Island.init(&DSL_museum, this, MODEL_PATH + "Floating_Platform.obj", TEXTURE_PATH + "Floating_Platform.png", temp);
 
+		std::ifstream f_artworks("config/artworks.json");
+		nlohmann::json j_artworks;
+		f_artworks >> j_artworks;
+
+		for (auto& parsed : j_artworks["pictures"].get<std::vector<j_Picture>>()) {
+			printVec("scale", { parsed.scale[0], parsed.scale[1], parsed.scale[2] });
+			Picture pic;
+			pic.init(&DSL_museum, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + parsed.src, 
+					glm::translate(glm::mat4(1), { parsed.translate[0], parsed.translate[1], parsed.translate[2] }) *
+					glm::rotate(glm::mat4(1), glm::radians(parsed.rotate[1]), glm::vec3(0, 1, 0)) *
+					glm::rotate(glm::mat4(1), glm::radians(parsed.rotate[0]), glm::vec3(1, 0, 0)) *
+					glm::rotate(glm::mat4(1), glm::radians(parsed.rotate[2]), glm::vec3(0, 0, 1)) *
+					glm::scale(glm::mat4(1), { parsed.scale[0], parsed.scale[1], parsed.scale[2]})
+				);
+			pic.setData(parsed.title, parsed.description);
+			pictures.push_front(pic);
+			//artworks.push_front(pic);
+		}
 
 		//-----Pictures----//
 
 		//Matisse
+		/*
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-1.9f, 0.9f, 12.5f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.009f, 0.009f, 0.009f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.658f, 1.0f));
@@ -667,7 +796,7 @@ class MyProject : public BaseProject {
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.6f, 0.90f, 8.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.007f, 0.007f, 0.007f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 0.65f, 1.0f));
-		Cigni.init(&DSL_museum, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Cigni.png", temp);
+		Cigni.init(&DSL_museum, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Cigni.png", temp);*/
 
 		//-----Statues-----//
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.05f, -2.0f))*
@@ -844,7 +973,10 @@ class MyProject : public BaseProject {
 		Floor.cleanup();
 		Island.cleanup();
 
-		Sunday.cleanup();
+		for (Picture& pic : pictures) {
+			pic.cleanup();
+		}
+		/*Sunday.cleanup();
 		StarringNight.cleanup();
 		VanGogh.cleanup();
 		Munch_Scream.cleanup();
@@ -861,7 +993,7 @@ class MyProject : public BaseProject {
 		Cavalli.cleanup();
 		Dream.cleanup();
 		Cigni.cleanup();
-		Donna_Cappello.cleanup();
+		Donna_Cappello.cleanup();*/
 
 		Venus_Milo.cleanup();
 		David.cleanup();
@@ -918,7 +1050,7 @@ class MyProject : public BaseProject {
 
 // ---------- picture command buffer ----------
 
-		Sunday.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+		/*Sunday.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		StarringNight.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		VanGogh.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Munch_Scream.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
@@ -935,7 +1067,11 @@ class MyProject : public BaseProject {
 		Cavalli.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Dream.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Cigni.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
-		Donna_Cappello.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+		Donna_Cappello.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);*/
+
+		for (Picture& pic : pictures) {
+			pic.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+		}
 
 		Dalì1.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Dalì2.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
@@ -1026,6 +1162,14 @@ class MyProject : public BaseProject {
 		}
 		if (glfwGetKey(window, GLFW_KEY_W)) {
 			player.forward(deltaT);
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_SPACE)) {
+			for (Picture& clb : pictures) {
+				if (clb.isClicked(player.camera.getRay())) {
+					clb.handleClick();
+				}
+			}
 		}
 
 		// ------ copying data into buffers ------
