@@ -1637,6 +1637,7 @@ void Texture::createTextureSampler() {
 
 
 void Texture::init(BaseProject *bp, std::string file) {
+	std::cout << file << std::endl;
 	BP = bp;
 	createTextureImage(file);
 	createTextureImageView();

@@ -3,6 +3,7 @@
         {
             "title": "The Dance",
             "src": "TheDance.png",
+            "model": "pictures.obj",
             "scale": [0.009, 0.005922, 0.009],
             "rotate": [0,0,0],
             "translate": [-1.9, 0.9, 12.5],
@@ -10,6 +11,7 @@
         },{
             "title": "Donna con cappello",
             "src": "Donna_Cappello.png",
+            "model": "pictures.obj",
             "scale": [0.003, 0.00411, 0.003],
             "rotate": [0, 180, 0],
             "translate": [2.3, 0.8,  12.3],
@@ -18,6 +20,7 @@
         {
             "title": "Starring Night",
             "src": "starringNight.png",
+            "model": "pictures.obj",
             "scale": [0.006, 0.00462, 0.006],
             "rotate": [0, 0, 0],
             "translate": [-1.9, 0.9, 4.2],
@@ -26,33 +29,273 @@
         {
             "title": "Autoritratto di Van Gogh",
             "src": "VanGogh.png",
+            "model": "pictures.obj",
             "scale": [0.002, 0.00248, 0.002],
             "rotate": [0, 0, 0],
             "translate": [-1.9, 1.1, 2.4],
             "description": "scemo senza un orecchio - van gogh"
+        },
+        {
+            "title": "Girasoli - van gogh",
+            "src": "Girasoli.png",
+            "model": "pictures.obj",
+            "scale": [0.0032, 0.0041952, 0.0032],
+            "rotate": [0, 180, 0],
+            "translate": [2.3, 1.0, 3.5],
+            "description": "fonte di olio per - van gogh"
+        },
+        {
+            "title": "La camera - Van Gogh",
+            "src": "La_Camera.png",
+            "model": "pictures.obj",
+            "scale": [0.006, 0.004758, 0.006],
+            "rotate": [0, 180, 0],
+            "translate": [2.3, 1.0, 5.5],
+            "description": "la camerata dei fascisti - van gogh"
+        },
+        {
+            "title": "guernica - picasso",
+            "src": "Guernica.png",
+            "model": "Guernica.obj",
+            "scale": [0.2, 0.2, 0.2],
+            "rotate": [90, 90, 0],
+            "translate": [-1.8, 1.3, -0.5],
+            "description": "picasso non sa disegnare - van gogh"
+        },
+        {
+            "title": "boulevard monmatre",
+            "src": "Boulevard_monmarte.png",
+            "model": "pictures.obj",
+            "scale": [0.006, 0.004656, 0.006],
+            "rotate": [0, 0, 0],
+            "translate": [-1.9, 0.9, 6.65],
+            "description": "vinz non sa scrivere - van gogh"
+        },
+        {
+            "title": "Alba sul mare",
+            "src": "Impression_Sunrise.png",
+            "model": "pictures.obj",
+            "scale": [0.005, 0.00388, 0.005],
+            "rotate": [0, 0, 0],
+            "translate": [-1.9, 0.9, 8.9],
+            "description": "gino - van gogh"
+        },
+        {
+            "title": "Domenica sul fiume",
+            "src": "a_sunday_afternoon.png",
+            "model": "pictures.obj",
+            "scale": [0.007, 0.004697, 0.007],
+            "rotate": [0, 180, 0],
+            "translate": [2.3, 0.9, 8.2],
+            "description": "donna molesta guarda bambini giocare - van gogh"
+        },
+        {
+            "title": "Colazione sul prato",
+            "src": "Manet_Dejeuner.png",
+            "model": "pictures.obj",
+            "scale": [0.007, 0.005439, 0.007],
+            "rotate": [0, 180, 0],
+            "translate": [2.3, 0.9, 10.2],
+            "description": "colazione dei soldati dopo aver conquistato Prato - van gogh"
+        },
+        {
+            "title": "L'urlo - munch",
+            "src": "Munch_Scream.png",
+            "model": "pictures.obj",
+            "scale": [0.004, 0.00508, 0.004],
+            "rotate": [0, 180, 0],
+            "translate": [6.8, 0.85, 3.2],
+            "description": "uomo dopo che ha scommesso la casa alla roulette - van gogh"
+        },
+        {
+            "title": "Composizione 6 - vinz non si ricorda",
+            "src": "Composizione_VI.png",
+            "model": "pictures.obj",
+            "scale": [0.007, 0.004606, 0.007],
+            "rotate": [0, 180, 0],
+            "translate": [6.8, 0.9, 5.4],
+            "description": "gio dice di averlo fatto lui - van gogh"
+        },
+        {
+            "title": "Cavalli - espressionismo dice vinz",
+            "src": "Cavalli.png",
+            "model": "pictures.obj",
+            "scale": [0.007, 0.004109, 0.007],
+            "rotate": [0, 0, 0],
+            "translate": [2.6, 0.9, 3.4],
+            "description": "gio dice il sesso anale - van gogh"
+        },
+        {
+            "title": "I campagnoli di merda - vinz",
+            "src": "Volpedo_FourthEstate.png",
+            "model": "pictures.obj",
+            "scale": [0.016, 0.00864, 0.016],
+            "rotate": [0, 180, 0],
+            "translate": [6.8, 0.7, 14.6],
+            "description": "giovanni caleffi (seguitemi su instagram) - van gogh"
+        },
+        {
+            "title": "Sogno causato da una puntura di vespa uscito da un melograno - Dali",
+            "src": "Dream.png",
+            "model": "pictures.obj",
+            "scale": [0.0057, 0.0037962, 0.0057],
+            "rotate": [0, 180, 0],
+            "translate": [6.8, 0.9, 9.9],
+            "description": "questo faceva uso di oppio - van gogh"
+        },
+        {
+            "title": "Cigni che riflettono elefanti - Dali",
+            "src": "Cigni.png",
+            "model": "pictures.obj",
+            "scale": [0.007, 0.00455, 0.007],
+            "rotate": [0, 0, 0],
+            "translate": [2.6, 0.9, 8.0],
+            "description": "confermo, lui è proprio sotto effetto di oppiacei - van gogh"
+        },
+        {
+            "title": "Persistenza - Dali",
+            "src": "Persistenza.png",
+            "model": "pictures.obj",
+            "scale": [0.0057, 0.0037962, 0.0057],
+            "rotate": [0, 180, 0],
+            "translate": [6.8, 0.9, 7.8],
+            "description": "dali usava jpa (java persistence api) - van gogh"
         }
     ],
-    "statue": [
+    "statues": [
         {
-            "title": "",
-            "scale": [],
-            "rotate": [],
-            "translate": [],
-            "description": ""
+            "title": "Venere - Milo",
+            "model": "Venus_Milo.obj",
+            "src": "Venus_Milo.jpg",
+            "scale": [0.007, 0.007, 0.007],
+            "rotate": [-90, -90, 0],
+            "translate": [6.0, 0.05, -2.0],
+            "description": "statue di milo"
         },
         {
-            "title": "",
-            "scale": [],
-            "rotate": [],
-            "translate": [],
-            "description": ""
+            "title": "David - Michelangelo",
+            "model": "David.obj",
+            "src": "David.jpg",
+            "scale": [0.003, 0.003, 0.003],
+            "rotate": [-90, -90, 0],
+            "translate": [6, 0.05, -0.5],
+            "description": "guardate il suo pene"
         },
         {
-            "title": "",
-            "scale": [],
-            "rotate": [],
-            "translate": [],
-            "description": ""
+            "title": "Discobolo - Giovanni Caleffi",
+            "model": "Discobolus.obj",
+            "src": "Discobolus.jpg",
+            "scale": [0.007, 0.007, 0.007],
+            "rotate": [-90, -90, 0],
+            "translate": [6, 0.05, 1],
+            "description": "giovanni ha imparato a scolpire il marmo ieri, dopo che ha scolpito i suoi addominali"
+        },
+        {
+            "title": "Among_Us",
+            "model": "Among_Us.obj",
+            "src": "Among_Us.png",
+            "scale": [1, 1, 1],
+            "rotate": [0, 90, 0],
+            "translate": [3, 0.05, 1],
+            "description": "sus"
+        }
+    ],
+    "signs": [
+        {
+            "src": "Dali.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 0, 180],
+            "translate": [4.15, 2.0, 10.9]
+        },
+        {
+            "src": "Dali.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 180, 180],
+            "translate": [4.15, 2.0, 6.2]
+        },
+        {
+            "src": "Impressionism.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 0, 180],
+            "translate": [-0.35, 2.0, 10.9]
+        },
+        {
+            "src": "Impressionism.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 180, 180],
+            "translate": [-0.35, 2.0, 6.2]
+        },
+        {
+            "src": "VanGoghSign.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 0, 180],
+            "translate": [-0.35, 2.0, 6.4]
+        },
+        {
+            "src": "VanGoghSign.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 180, 180],
+            "translate": [-0.35, 2.0, 1.7]
+        },
+        {
+            "src": "Expressionism.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 0, 180],
+            "translate": [4.15, 2.0, 6.4]
+        },
+        {
+            "src": "Expressionism.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 180, 180],
+            "translate": [4.15, 2.0, 1.7]
+        },
+        {
+            "src": "GuernicaSign.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 0, 180],
+            "translate": [-0.35, 2.0, 1.85]
+        },
+        {
+            "src": "GuernicaSign.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 0, -90],
+            "translate": [2.6, 2.0, -1.0]
+        },
+        {
+            "src": "Sculptures.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 0, 180],
+            "translate": [4.15, 2.0, 1.85]
+        },
+        {
+            "src": "Sculptures.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 180, -90],
+            "translate": [2.38, 2.0, -1.0]
+        },
+        {
+            "src": "Matisse.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 0, -90],
+            "translate": [2.6, 2.0, 13.6]
+        },
+        {
+            "src": "Matisse.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 180, 180],
+            "translate": [-0.35, 2.0, 10.07]
+        },
+        {
+            "src": "TheFourthSign.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 180, 180],
+            "translate": [4.15, 2.0, 10.65]
+        },
+        {
+            "src": "TheFourthSign.png",
+            "scale": [0.08, 0.08, 0.08],
+            "rotate": [-90, 180, -90],
+            "translate": [2.38, 2.0, 13.6]
         }
     ]
 }
