@@ -27,6 +27,6 @@ void main() {
 	vec3 ambient  = diffColor;
 
 
-	
-	outColor = vec4(clamp(ambient + diffuse + specular, vec3(0.0f), vec3(1.0f)), 1.0f);
+	outColor = vec4(1.0f,1.0f,1.0f,1.0f);
+	//outColor = vec4(clamp(ambient + diffuse + specular, vec3(0.0f), vec3(1.0f)), 1.0f);
 }
