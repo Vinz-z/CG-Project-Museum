@@ -33,7 +33,9 @@ vec4 createPointLight(vec3 lightPos, vec3 pos, vec3 N, vec3 V, vec3 diffColor, f
 	vec3 lambertDiffuse = diffColor * max(dot(N, lightDir), 0.0f);
 	vec3 phongSpecular = vec3(pow(max(dot(R,V),0.0f), specPower));
 
-	vec4 pointLight = vec4((lambertDiffuse + phongSpecular) * lightColor, 1.0f);
+	vec3 ambient  = (vec3(0.1f,0.1f, 0.1f) * (1.0f + N.y) + vec3(0.0f,0.0f, 0.1f) * (1.0f - N.y)) * diffColor;
+
+	vec4 pointLight = vec4((lambertDiffuse + phongSpecular + ambient) * lightColor, 1.0f);
 	return pointLight;
 }
 
@@ -95,10 +97,9 @@ void main() {
 	//vec3 ambient = (vec3(N.y + 1.0f) * diffuse) + l_A*vec3(0.1f, 0.1f, 0.1f);
 	*/
 	//outColor = vec4(clamp(ambient + diffuse + specular, vec3(0.0f), vec3(1.0f)), 1.0f);
-	vec4 outPut = createPointLight(gubo.lightPos[0], fragPos, N, V, diffColor, specPower);
+	outColor = createPointLight(gubo.lightPos[0], fragPos, N, V, diffColor, specPower);
 	for (int i = 1; i < (gubo.lightPos).length(); i++){
-		outPut = outPut + createPointLight(gubo.lightPos[i], fragPos, N, V, diffColor, specPower);
+		outColor = outColor + createPointLight(gubo.lightPos[i], fragPos, N, V, diffColor, specPower);
 	}
-	outColor = outPut;
 	//outColor = vec4((diffuse1 + specular1) * lC1, 1.0f) + vec4((diffuse2 + specular2) * lC2, 1.0f);
 }
