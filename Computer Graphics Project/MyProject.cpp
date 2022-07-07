@@ -1,6 +1,5 @@
-// This has been adapted from the Vulkan tutorial
-
-#include "MyProject.hpp"
+#include "MyProject.hpp";
+#include <list>
 
 const std::string MODEL_PATH = "models/";
 const std::string TEXTURE_PATH = "textures/";
@@ -15,28 +14,231 @@ struct UniformBufferObject {
 	alignas(16) glm::mat4 model;
 };
 
-struct Picture {
-	Model model;
+struct SceneObject {
 	Texture texture;
-	DescriptorSet descSet;
+	Model mesh;
+	Model colliderMesh;
 
-	PushConstantObject pco;
+	DescriptorSet DS;
+	DescriptorSetLayout DSL;
+	UniformBufferObject ubo;
 
-	void cleanup();
-	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position);
-	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+	void init(DescriptorSetLayout *global, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 initialPosition) {}
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {}
+	void cleanup() {}
+	void handleClick() {}
 };
 
+// -------------------- start Player --------------------
+
+glm::vec3 vectorProjection(glm::vec3 from, glm::vec3 to) {
+	//                  dot(u,v)
+	// proj_v(u) = ------------------- * v -> the projection of u on v
+	//               v.x*v.x + v.y*v.y     -> it should be the squared modulo of the vect
+	
+	return (glm::dot(from, to)) * to /
+				glm::dot(to, to);
+}
+
+void printVec(std::string label, glm::vec3 vvv) {
+	std::cout << " + " << label << ": " << vvv[0] << " " << vvv[1] << " " << vvv[2] << std::endl;
+}
+
+struct Camera {
+	void init(glm::vec3 angles, glm::vec3 position, float near, float far, float fov, float aspectRatio) {
+		this->angles = angles;
+		this->position = position;
+		this->near = near;
+		this->far = far;
+		this->fov = fov;
+
+		projection = glm::perspective(glm::radians(fov), aspectRatio, near, far);
+		projection[1][1] *= -1;
+	}
+
+	void rotate(glm::vec3 deltaRotation) {
+		angles += deltaRotation;
+		camera = 
+			glm::rotate(glm::mat4(1.0f), angles.y, glm::vec3(0.0f, 1.0f, 0.0f)) *
+			glm::rotate(glm::mat4(1.0f), glm::clamp(angles.x, -glm::half_pi<float>(), glm::half_pi<float>()), glm::vec3(1.0f, 0.0f, 0.0f)) *
+			glm::rotate(glm::mat4(1.0f), angles.z, glm::vec3(0.0f, 0.0f, 1.0f));
+	}
+
+	void move(glm::vec3 ds) {
+		position += ds;
+	}
+
+	glm::mat4 getCameraMatrix() {
+		return glm::translate(glm::transpose(camera), -position);
+	}
+
+	glm::mat4 getProjectionMatrix() {
+		return projection;
+	}
+
+	glm::vec4 getViewDirection() {
+		return
+			glm::rotate(glm::mat4(1.0), angles.z, glm::vec3(0, 0, 1)) *
+			glm::rotate(glm::mat4(1.0), glm::clamp(angles.x, -glm::half_pi<float>(), glm::half_pi<float>()), glm::vec3(1, 0, 0)) *
+			glm::rotate(glm::mat4(1.0), angles.y, glm::vec3(0, 1, 0)) *
+			glm::vec4(0, 0, 1, 1);
+		//return glm::transpose(camera) * glm::vec4(0,0,1,1);
+	}
+
+private:
+	glm::vec3 angles;
+	glm::vec3 position;
+	float near;
+	float far;
+	float fov;
+	glm::mat4 camera;
+	glm::mat4 projection;
+};
+
+struct Triangle {
+	glm::vec3 A;
+	glm::vec3 B;
+	glm::vec3 C;
+	glm::vec3 AB;
+	glm::vec3 AC;
+	glm::vec3  norm;
+
+	Triangle (glm::vec3 a, glm::vec3 b, glm::vec3 c) {
+		this->A = a;
+		this->B = b;
+		this->C = c;
+		this->AB = B - A;
+		this->AC = C - A;
+		norm = glm::cross(AB, AC);
+		//norm.x = norm.x < 0.00001 ? 0.0f : norm.x;
+		//norm.y = norm.y < 0.00001 ? 0.0f : norm.y;
+		//norm.z = norm.z < 0.00001 ? 0.0f : norm.z;
+	}
+
+	bool collide(glm::vec3 pos, glm::vec3 dir) {
+		// find the intersection between the plane of the triangle and the line 
+		// of the direction u are moving
+		float d = glm::dot(norm, A);
+		float perp = glm::dot(dir, norm);
+		if (perp == 0) return false;
+		float t = (d - glm::dot(norm, pos)) / perp;
+
+		glm::vec3 intersection = pos + (dir * t);
+
+		// walking on the triangle you must have the intersection always on the same side
+		// check it using dot between edge and point - start edge: the sign need to be always the same
+		//int a = glm::dot(intersection - A, B - A) >= 0;
+		//int b = glm::dot(intersection - B, C - B) >= 0;
+		//int c = glm::dot(intersection - C, A - C) >= 0;
+
+		Triangle a{ A, B, intersection };
+		Triangle b{ B, C, intersection };
+		Triangle c{ C, A, intersection };
+
+		return
+			glm::dot(glm::normalize(a.norm), glm::normalize(b.norm)) == 1.0f &&
+			glm::dot(glm::normalize(b.norm), glm::normalize(c.norm)) == 1.0f &&
+			glm::length(intersection - pos) <= (glm::length(dir) + 0.1f);
+	}
+
+	void print() {
+		printVec("A", A);
+		printVec("B", B);
+		printVec("C", C);
+		printVec("norm", norm);
+	}
+};
+
+struct Player {
+	std::list<Triangle> boundaries;
+	Camera camera;
+
+	const float movementSpeed = 3.0f;
+	const float jumping_speed = 0.5f;
+
+	void init(float aspectRatio, glm::vec3 initPos) {
+		position = initPos;
+		camera.init(glm::vec3(0.0f, 0.0f, 0.0f), position, 0.1f, 100.0f, 70.0f, aspectRatio);
+	}
+
+	void forward(float dt) {
+		auto vd = camera.getViewDirection();
+		auto ds = (vectorProjection(vd, glm::vec3(1, 0, 0)) + vectorProjection(vd, glm::vec3(0, 0, 1))) 
+			* movementSpeed 
+			* dt;
+		move(-ds);
+	}
+
+	void backward(float dt) {
+		auto vd = camera.getViewDirection();
+		auto ds = (vectorProjection(vd, glm::vec3(1, 0, 0)) + vectorProjection(vd, glm::vec3(0, 0, 1)))
+			* movementSpeed
+			* dt;
+		move(ds);
+	}
+
+	void left(float dt) {
+		auto vd = glm::rotate(glm::mat4(1), glm::half_pi<float>(), glm::vec3(0, 1, 0)) * camera.getViewDirection();
+		auto ds = (vectorProjection(glm::vec3(vd), glm::vec3(1, 0, 0)) + vectorProjection(glm::vec3(vd), glm::vec3(0, 0, 1)))
+			* movementSpeed
+			* dt;
+		move(-ds);
+	}
+
+	void right(float dt) {
+		auto vd = glm::rotate(glm::mat4(1), glm::half_pi<float>(), glm::vec3(0, 1, 0)) * camera.getViewDirection();
+		auto ds = (vectorProjection(glm::vec3(vd), glm::vec3(1, 0, 0)) + vectorProjection(glm::vec3(vd), glm::vec3(0, 0, 1)))
+			* movementSpeed
+			* dt;
+		move(ds);
+	}
+
+	void moveHead(glm::vec3 deltaRotation) {
+		camera.rotate(deltaRotation);
+	}
+
+	void addTriangle(Triangle t) {
+		boundaries.push_front(t);
+	}
+
+private:
+	glm::vec3 position;
+
+	void move(glm::vec3 dir) {
+		// check for each boundary if there is a collision -> if yes then cant move in this direction
+		for (Triangle& t : boundaries) { if (t.collide(position, dir)) { return; } }
+		position += dir;
+		camera.move(dir);
+	}
+};
+
+// -------------------- end Player --------------------
+
+// -------------------- start Picture --------------------
+
+struct Picture : SceneObject {
+	PushConstantObject pco;
+
+	void init(DescriptorSetLayout *global, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 initialPosition);
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+	void handleClick();
+	void cleanup();
+};
+
+void Picture::handleClick() {
+	std::cout << "picture cliccato" << std::endl;
+}
+
 void Picture::cleanup(){
-	descSet.cleanup();
+	DS.cleanup();
 	texture.cleanup();
-	model.cleanup();
+	mesh.cleanup();
 }
 
 void Picture::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position) {
-	model.init(bs, modelString);
+	mesh.init(bs, modelString);
 	texture.init(bs, textureString);
-	descSet.init(bs, DSL, {
+	DS.init(bs, DSL, {
 		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
 		{1, TEXTURE, 0, &texture}
 	});
@@ -44,12 +246,12 @@ void Picture::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelS
 }
 
 void Picture::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
-	VkBuffer vertexBuffers[] = { model.vertexBuffer };
+	VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage], 
+		pipeline.pipelineLayout, 1, 1, &DS.descriptorSets[currentImage], 
 		0, nullptr);
 
 	// push constant before drawing the picture
@@ -58,38 +260,36 @@ void Picture::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentIm
 	);
 
 	// draw the picture
-	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mesh.indices.size()), 1, 0, 0, 0);
 }
 
-void copyInMemory(Picture picture, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
-	vkMapMemory(device, picture.descSet.uniformBuffersMemory[0][currentImage], 0,
-		sizeof(ubo), 0, &data);
-	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(device, picture.descSet.uniformBuffersMemory[0][currentImage]);
-};
+// -------------------- end Picture --------------------
 
-struct Statue {
-	Model model;
-	Texture texture;
-	DescriptorSet descSet;
+// -------------------- start Statue --------------------
 
+struct Statue : SceneObject {
 	PushConstantObject pco;
 
-	void cleanup();
 	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position);
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+	void handleClick();
+	void cleanup();
 };
 
+void Statue::handleClick() {
+	std::cout << "statua cliccato" << std::endl;
+}
+
 void Statue::cleanup() {
-	descSet.cleanup();
+	DS.cleanup();
 	texture.cleanup();
-	model.cleanup();
+	mesh.cleanup();
 }
 
 void Statue::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position) {
-	model.init(bs, modelString);
+	mesh.init(bs, modelString);
 	texture.init(bs, textureString);
-	descSet.init(bs, DSL, {
+	DS.init(bs, DSL, {
 		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
 		{1, TEXTURE, 0, &texture}
 		});
@@ -97,12 +297,12 @@ void Statue::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelSt
 }
 
 void Statue::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
-	VkBuffer vertexBuffers[] = { model.vertexBuffer };
+	VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
+		pipeline.pipelineLayout, 1, 1, &DS.descriptorSets[currentImage],
 		0, nullptr);
 
 	// push constant before drawing the picture
@@ -110,20 +310,25 @@ void Statue::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentIma
 		0, sizeof(PushConstantObject), &pco
 	);
 
-	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mesh.indices.size()), 1, 0, 0, 0);
 }
 
-void copyInMemory(Statue statue, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
-	vkMapMemory(device, statue.descSet.uniformBuffersMemory[0][currentImage], 0,
+// -------------------- end Statue --------------------
+
+void copyInMemory(SceneObject obj, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
+	vkMapMemory(device, obj.DS.uniformBuffersMemory[0][currentImage], 0,
 		sizeof(ubo), 0, &data);
 	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(device, statue.descSet.uniformBuffersMemory[0][currentImage]);
+	vkUnmapMemory(device, obj.DS.uniformBuffersMemory[0][currentImage]);
 };
+
+// -------------------- start Skybox --------------------
 
 struct Skybox {
 	Model model;
 	Texture texture;
 	Pipeline pipeline;
+
 	DescriptorSet DS;
 	DescriptorSetLayout DSL;
 	UniformBufferObject ubo;
@@ -189,13 +394,16 @@ void Skybox::init(BaseProject *bp, DescriptorSetLayout *global) {
 	ubo.model = glm::scale(glm::mat4(1.0f), glm::vec3(50, 50, 50));
 }
 
-class MyProject : public BaseProject {
+// -------------------- end Skybox --------------------
 
+class MyProject : public BaseProject {
 	protected:
 	// Here you list all the Vulkan objects you need:
 	// Camera
 		glm::vec3 CamAng = glm::vec3(0.0f);
 		glm::vec3 CamPos = glm::vec3(-0.2f, 0.95f, 14.5f);
+
+	Player player;
 
 	// Descriptor Layouts [what will be passed to the shaders]
 	DescriptorSetLayout DSL_global;
@@ -212,8 +420,10 @@ class MyProject : public BaseProject {
 
 	// Models, textures and Descriptors (values assigned to the uniforms)
 	Model M_Museum;
+	Model M_museumCollisionMesh;
 	Texture T_Museum;
 	DescriptorSet DS_Museum; //Instance of DSL_museum
+	UniformBufferObject ubo_museum{};
 
 	DescriptorSet DS_global; // used for cam and light points
 
@@ -288,6 +498,10 @@ class MyProject : public BaseProject {
 		double halfh = windowHeight * 1.0 / 2;
 		glfwGetCursorPos(window, &halfw, &halfh);
 
+		ubo_museum.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
+			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
+			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
+
 		// Descriptor Layouts [what will be passed to the shaders]
 		DSL_museum.init(this, {
 					// this array contains the binding:
@@ -328,6 +542,7 @@ class MyProject : public BaseProject {
 		statuePipeline.init(this, "shaders/statue_vert.spv", "shaders/statue_frag.spv", {&DSL_global, &DSL_statue});
 
 		// Models, textures and Descriptors (values assigned to the uniforms)
+		
 		M_Museum.init(this, MODEL_PATH + "museumTri.obj");
 		T_Museum.init(this, TEXTURE_PATH + "wall.jpg");
 		DS_Museum.init(this, &DSL_museum, {
@@ -355,8 +570,13 @@ class MyProject : public BaseProject {
 				{1, TEXTURE, 0, &T_Platform},
 			});
 		
+		// reading the config json
+		//std::ifstream i("config/config.json");
+		//json avoidHardcode;
+		//i >> avoidHardcode;
 
 		//-----Pictures----//
+
 		//Matisse
 		glm::mat4 temp = glm::translate(glm::mat4(1.0f), glm::vec3(-1.9f, 0.9f, 12.5f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.009f, 0.009f, 0.009f))*
@@ -621,6 +841,14 @@ class MyProject : public BaseProject {
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
 		Fourth2.init(&DSL_pic, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "TheFourthSign.png", temp);
 
+		for (int i = 0; i < M_Museum.indices.size() - 1; i += 3) {
+			player.addTriangle(Triangle{
+					ubo_museum.model * glm::vec4(M_Museum.vertices[M_Museum.indices[i]].pos, 1.0f),
+					ubo_museum.model * glm::vec4(M_Museum.vertices[M_Museum.indices[i + 1]].pos, 1.0f),
+					ubo_museum.model * glm::vec4(M_Museum.vertices[M_Museum.indices[i + 2]].pos, 1.0f)
+				});
+		}
+		
 
 		//----Skybox---//
 		skybox.init(this, &DSL_global);
@@ -629,6 +857,8 @@ class MyProject : public BaseProject {
 			{0, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
 		});
 
+		// init the player with the right aspect ratio of the image
+		player.init(swapChainExtent.width / (float)swapChainExtent.height, { -0.2f, 0.95f, 14.94f });
 	}
 
 	// Here you destroy all the objects you created!		
@@ -817,104 +1047,58 @@ class MyProject : public BaseProject {
 		double m_dy = old_ypos - ypos;
 		old_xpos = xpos; old_ypos = ypos;
 
-		glm::vec3 oldCamPos = CamPos;
+		// ------ camera movement ------
 
+		glm::vec3 viewChange = glm::vec3(0.0f, 0.0f, 0.0f);
 		glfwSetInputMode(window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-			CamAng.y -= m_dx * ROT_SPEED / MOUSE_RES;
-			CamAng.x -= m_dy * ROT_SPEED / MOUSE_RES;
+			viewChange.y -= m_dx * ROT_SPEED / MOUSE_RES;
+			viewChange.x -= m_dy * ROT_SPEED / MOUSE_RES;
 		}
-		/*
-		if (hideMouse) {
-			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-			hideMouse = false; isMouseHidden = true;
-		}
-		if (showMouse) {
-			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-			showMouse = false; isMouseHidden = false;
-		}
-		CamAng.y += m_dx * ROT_SPEED / MOUSE_RES;
-		CamAng.x += m_dy * ROT_SPEED / MOUSE_RES;
-		*/
 
 		if (glfwGetKey(window, GLFW_KEY_LEFT)) {
-			CamAng.y += deltaT * ROT_SPEED;
+			viewChange.y = deltaT * ROT_SPEED;
 		}
 		if (glfwGetKey(window, GLFW_KEY_RIGHT)) {
-			CamAng.y -= deltaT * ROT_SPEED;
+			viewChange.y = -(deltaT * ROT_SPEED);
 		}
 		if (glfwGetKey(window, GLFW_KEY_UP)) {
-			CamAng.x += deltaT * ROT_SPEED;
+			viewChange.x = deltaT * ROT_SPEED;
 		}
 		if (glfwGetKey(window, GLFW_KEY_DOWN)) {
-			CamAng.x -= deltaT * ROT_SPEED;
+			viewChange.x = -(deltaT * ROT_SPEED);
 		}
 
-		glm::mat3 CamDir = glm::mat3(glm::rotate(glm::mat4(1.0f), CamAng.y, glm::vec3(0.0f, 1.0f, 0.0f))) *
-			glm::mat3(glm::rotate(glm::mat4(1.0f), CamAng.x, glm::vec3(1.0f, 0.0f, 0.0f))) *
-			glm::mat3(glm::rotate(glm::mat4(1.0f), CamAng.z, glm::vec3(0.0f, 0.0f, 1.0f)));
+		player.moveHead(viewChange);
+
+		// ------ player movement ------
 
 		if (glfwGetKey(window, GLFW_KEY_A)) {
-			CamPos -= MOVE_SPEED * glm::vec3(glm::rotate(glm::mat4(1.0f), CamAng.y,
-				glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec4(1, 0, 0, 1)) * deltaT;
+			player.left(deltaT);
 		}
 		if (glfwGetKey(window, GLFW_KEY_D)) {
-			CamPos += MOVE_SPEED * glm::vec3(glm::rotate(glm::mat4(1.0f), CamAng.y,
-				glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec4(1, 0, 0, 1)) * deltaT;
+			player.right(deltaT);
 		}
 		if (glfwGetKey(window, GLFW_KEY_S)) {
-			CamPos += MOVE_SPEED * glm::vec3(glm::rotate(glm::mat4(1.0f), CamAng.y,
-				glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec4(0, 0, 1, 1)) * deltaT;
+			player.backward(deltaT);
 		}
 		if (glfwGetKey(window, GLFW_KEY_W)) {
-			CamPos -= MOVE_SPEED * glm::vec3(glm::rotate(glm::mat4(1.0f), CamAng.y,
-				glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec4(0, 0, 1, 1)) * deltaT;
+			player.forward(deltaT);
 		}
 
-		if (glfwGetKey(window, GLFW_KEY_F)) {
-			CamPos -= MOVE_SPEED * glm::vec3(0, 1, 0) * deltaT;
-		}
-		if (glfwGetKey(window, GLFW_KEY_R)) {
-			CamPos += MOVE_SPEED * glm::vec3(0, 1, 0) * deltaT;
-		}
-
-		/*
-		if (glfwGetKey(window, GLFW_KEY_ESCAPE)) {
-			if (isMouseHidden) showMouse = true;
-			else hideMouse = true;
-		}
-		*/
-
-		//---------------Limits-----------//
-		/*
-		if (CamPos.x > 5.0f || CamPos.x < -5.0f || CamPos.z < -2.0f || CamPos.z > 10.0f) {
-			CamPos = oldCamPos;
-		}*/
-
-		glm::mat4 CamMat = glm::translate(glm::transpose(glm::mat4(CamDir)), -CamPos);
-
-		glm::mat4 Prj = glm::perspective(glm::radians(60.0f),
-			swapChainExtent.width / (float)swapChainExtent.height,
-			0.1f, 100.0f);
-		Prj[1][1] *= -1;
+		// ------ copying data into buffers ------
 
 		void* data;
 
 		//Update the Camera
 		GlobalUniformBufferObject gubo{};
-		gubo.view = CamMat;
-		gubo.proj = Prj;
+		gubo.view = player.camera.getCameraMatrix();
+		gubo.proj = player.camera.getProjectionMatrix();
 
 		// gubo
 		vkMapMemory(device, DS_global.uniformBuffersMemory[0][currentImage], 0, sizeof(gubo), 0, &data);
 		memcpy(data, &gubo, sizeof(gubo));
 		vkUnmapMemory(device, DS_global.uniformBuffersMemory[0][currentImage]);
-
-		// meglio creare un ubo per ogni binding così non facciamo casino e li riconosciamo dai nomi
-		UniformBufferObject ubo_museum{};
-		ubo_museum.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
-			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
 
 		// museum ubo
 		vkMapMemory(device, DS_Museum.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo_museum), 0, &data);
@@ -930,60 +1114,14 @@ class MyProject : public BaseProject {
 		memcpy(data, &ubo_platform, sizeof(ubo_platform));
 		vkUnmapMemory(device, DS_Platform.uniformBuffersMemory[0][currentImage]);
 
-		/*
-		copyInMemory(Sunday, currentImage, Sunday.ubo, data, device);
-		copyInMemory(StarringNight, currentImage, StarringNight.ubo, data, device);
-		copyInMemory(VanGogh, currentImage, VanGogh.ubo, data, device);
-		copyInMemory(Munch_Scream, currentImage, Munch_Scream.ubo, data, device);
-		copyInMemory(Guernica, currentImage, Guernica.ubo, data, device);
-		copyInMemory(Boulevard_monmarte, currentImage, Boulevard_monmarte.ubo, data, device);
-		copyInMemory(Volpedo_FourthEstate, currentImage, Volpedo_FourthEstate.ubo, data, device);
-		copyInMemory(Persistenza, currentImage, Persistenza.ubo, data, device);
-		copyInMemory(Impression_Sunrise, currentImage, Impression_Sunrise.ubo, data, device);
-		copyInMemory(TheDance, currentImage, TheDance.ubo, data, device);
-		copyInMemory(Manet_Dejeuner, currentImage, Manet_Dejeuner.ubo, data, device);
-		copyInMemory(Girasoli, currentImage, Girasoli.ubo, data, device);
-		copyInMemory(La_Camera, currentImage, La_Camera.ubo, data, device);
-		copyInMemory(Composizione_VI, currentImage, Composizione_VI.ubo, data, device);
-		copyInMemory(Cavalli, currentImage, Cavalli.ubo, data, device);
-		copyInMemory(Dream, currentImage, Dream.ubo, data, device);
-		copyInMemory(Cigni, currentImage, Cigni.ubo, data, device);
-		copyInMemory(Donna_Cappello, currentImage, Donna_Cappello.ubo, data, device);
-
-		copyInMemory(Venus_Milo, currentImage, Venus_Milo.ubo, data, device);
-		copyInMemory(David, currentImage, David.ubo, data, device);
-		copyInMemory(Discobolus, currentImage, Discobolus.ubo, data, device);
-
-
-		copyInMemory(Dalì1, currentImage, Dalì1.ubo, data, device);
-		copyInMemory(Dalì2, currentImage, Dalì2.ubo, data, device);
-		copyInMemory(Impressionism1, currentImage, Impressionism1.ubo, data, device);
-		copyInMemory(Impressionism2, currentImage, Impressionism2.ubo, data, device);
-		copyInMemory(VanGoghSign1, currentImage, VanGoghSign1.ubo, data, device);
-		copyInMemory(VanGoghSign2, currentImage, VanGoghSign2.ubo, data, device);
-		copyInMemory(Expressionism1, currentImage, Expressionism1.ubo, data, device);
-		copyInMemory(Expressionism2, currentImage, Expressionism2.ubo, data, device);
-		copyInMemory(GuernicaSign1, currentImage, GuernicaSign1.ubo, data, device);
-		copyInMemory(GuernicaSign2, currentImage, GuernicaSign2.ubo, data, device);
-		copyInMemory(Sculptures1, currentImage, Sculptures1.ubo, data, device);
-		copyInMemory(Sculptures2, currentImage, Sculptures2.ubo, data, device);
-		copyInMemory(Matisse1, currentImage, Matisse1.ubo, data, device);
-		copyInMemory(Matisse2, currentImage, Matisse2.ubo, data, device);
-		copyInMemory(Fourth1, currentImage, Fourth1.ubo, data, device);
-		copyInMemory(Fourth2, currentImage, Fourth2.ubo, data, device);
-		*/
 		// skybox -> ma se tanto è costante una volta che lo ho copiato non rimane li per sempre?
 		skybox.updateVkMemory(device, currentImage, data);
-	}
-
-	void calculateIntersection() {
-
 	}
 };
 
 // This is the main: probably you do not need to touch this!
 int main() {
-    MyProject app;
+	MyProject app;
 
     try {
         app.run();
