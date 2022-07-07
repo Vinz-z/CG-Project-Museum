@@ -1,6 +1,5 @@
-// This has been adapted from the Vulkan tutorial
-
-#include "MyProject.hpp"
+#include "MyProject.hpp";
+#include <list>
 
 const std::string MODEL_PATH = "models/";
 const std::string TEXTURE_PATH = "textures/";
@@ -20,7 +19,191 @@ struct UniformBufferObject {
 	alignas(16) glm::mat4 model;
 };
 
-struct Picture {
+// -------------------- start Player --------------------
+
+glm::vec3 vectorProjection(glm::vec3 from, glm::vec3 to) {
+	//                  dot(u,v)
+	// proj_v(u) = ------------------- * v -> the projection of u on v
+	//               v.x*v.x + v.y*v.y     -> it should be the squared modulo of the vect
+	
+	return (glm::dot(from, to)) * to /
+				glm::dot(to, to);
+}
+
+void printVec(std::string label, glm::vec3 vvv) {
+	std::cout << " + " << label << ": " << vvv[0] << " " << vvv[1] << " " << vvv[2] << std::endl;
+}
+
+struct Camera {
+	void init(glm::vec3 angles, glm::vec3 position, float near, float far, float fov, float aspectRatio) {
+		this->angles = angles;
+		this->position = position;
+		this->near = near;
+		this->far = far;
+		this->fov = fov;
+
+		projection = glm::perspective(glm::radians(fov), aspectRatio, near, far);
+		projection[1][1] *= -1;
+	}
+
+	void rotate(glm::vec3 deltaRotation) {
+		angles += deltaRotation;
+		camera = 
+			glm::rotate(glm::mat4(1.0f), angles.y, glm::vec3(0.0f, 1.0f, 0.0f)) *
+			glm::rotate(glm::mat4(1.0f), glm::clamp(angles.x, -glm::half_pi<float>(), glm::half_pi<float>()), glm::vec3(1.0f, 0.0f, 0.0f)) *
+			glm::rotate(glm::mat4(1.0f), angles.z, glm::vec3(0.0f, 0.0f, 1.0f));
+	}
+
+	void move(glm::vec3 ds) {
+		position += ds;
+	}
+
+	glm::mat4 getCameraMatrix() {
+		return glm::translate(glm::transpose(camera), -position);
+	}
+
+	glm::mat4 getProjectionMatrix() {
+		return projection;
+	}
+
+	glm::vec4 getViewDirection() {
+		return
+			glm::rotate(glm::mat4(1.0), angles.z, glm::vec3(0, 0, 1)) *
+			glm::rotate(glm::mat4(1.0), glm::clamp(angles.x, -glm::half_pi<float>(), glm::half_pi<float>()), glm::vec3(1, 0, 0)) *
+			glm::rotate(glm::mat4(1.0), angles.y, glm::vec3(0, 1, 0)) *
+			glm::vec4(0, 0, 1, 1);
+	}
+
+private:
+	glm::vec3 angles;
+	glm::vec3 position;
+	float near;
+	float far;
+	float fov;
+	glm::mat4 camera;
+	glm::mat4 projection;
+};
+
+struct Triangle {
+	glm::vec3 A;
+	glm::vec3 B;
+	glm::vec3 C;
+	glm::vec3 AB;
+	glm::vec3 AC;
+	glm::vec3  norm;
+
+	Triangle (glm::vec3 a, glm::vec3 b, glm::vec3 c) {
+		this->A = a;
+		this->B = b;
+		this->C = c;
+		this->AB = B - A;
+		this->AC = C - A;
+		norm = glm::cross(AB, AC);
+		//norm.x = norm.x < 0.00001 ? 0.0f : norm.x;
+		//norm.y = norm.y < 0.00001 ? 0.0f : norm.y;
+		//norm.z = norm.z < 0.00001 ? 0.0f : norm.z;
+	}
+
+	bool collide(glm::vec3 pos, glm::vec3 dir) {
+		// find the intersection between the plane of the triangle and the line 
+		// of the direction u are moving
+		float d = glm::dot(norm, A);
+		float perp = glm::dot(dir, norm);
+		if (perp == 0) return false;
+		float t = (d - glm::dot(norm, pos)) / perp;
+
+		glm::vec3 intersection = pos + (dir * t);
+
+		// walking on the triangle you must have the intersection always on the same side
+		// check it using dot between edge and point - start edge: the sign need to be always the same
+		//int a = glm::dot(intersection - A, B - A) >= 0;
+		//int b = glm::dot(intersection - B, C - B) >= 0;
+		//int c = glm::dot(intersection - C, A - C) >= 0;
+
+		Triangle a{ A, B, intersection };
+		Triangle b{ B, C, intersection };
+		Triangle c{ C, A, intersection };
+
+		return
+			glm::dot(glm::normalize(a.norm), glm::normalize(b.norm)) == 1.0f &&
+			glm::dot(glm::normalize(b.norm), glm::normalize(c.norm)) == 1.0f &&
+			glm::length(intersection - pos) <= (glm::length(dir) + 0.1f);
+	}
+
+	void print() {
+		printVec("A", A);
+		printVec("B", B);
+		printVec("C", C);
+		printVec("norm", norm);
+	}
+};
+
+struct Player {
+	std::list<Triangle> boundaries;
+	Camera camera;
+
+	const float movementSpeed = 3.0f;
+	const float jumping_speed = 0.5f;
+
+	void init(float aspectRatio, glm::vec3 initPos) {
+		position = initPos;
+		camera.init(glm::vec3(0.0f, 0.0f, 0.0f), position, 0.1f, 100.0f, 70.0f, aspectRatio);
+	}
+
+	void forward(float dt) {
+		auto vd = camera.getViewDirection();
+		auto ds = (vectorProjection(vd, glm::vec3(1, 0, 0)) + vectorProjection(vd, glm::vec3(0, 0, 1))) 
+			* movementSpeed 
+			* dt;
+		move(-ds);
+	}
+
+	void backward(float dt) {
+		auto vd = camera.getViewDirection();
+		auto ds = (vectorProjection(vd, glm::vec3(1, 0, 0)) + vectorProjection(vd, glm::vec3(0, 0, 1)))
+			* movementSpeed
+			* dt;
+		move(ds);
+	}
+
+	void left(float dt) {
+		auto vd = glm::rotate(glm::mat4(1), glm::half_pi<float>(), glm::vec3(0, 1, 0)) * camera.getViewDirection();
+		auto ds = (vectorProjection(glm::vec3(vd), glm::vec3(1, 0, 0)) + vectorProjection(glm::vec3(vd), glm::vec3(0, 0, 1)))
+			* movementSpeed
+			* dt;
+		move(-ds);
+	}
+
+	void right(float dt) {
+		auto vd = glm::rotate(glm::mat4(1), glm::half_pi<float>(), glm::vec3(0, 1, 0)) * camera.getViewDirection();
+		auto ds = (vectorProjection(glm::vec3(vd), glm::vec3(1, 0, 0)) + vectorProjection(glm::vec3(vd), glm::vec3(0, 0, 1)))
+			* movementSpeed
+			* dt;
+		move(ds);
+	}
+
+	void moveHead(glm::vec3 deltaRotation) {
+		camera.rotate(deltaRotation);
+	}
+
+	void addTriangle(Triangle t) {
+		boundaries.push_front(t);
+	}
+
+private:
+	glm::vec3 position;
+
+	void move(glm::vec3 dir) {
+		// check for each boundary if there is a collision -> if yes then cant move in this direction
+		for (Triangle& t : boundaries) { if (t.collide(position, dir)) { return; } }
+		position += dir;
+		camera.move(dir);
+	}
+};
+
+// -------------------- end Player --------------------
+
+struct Statue {
 	Model model;
 	Texture texture;
 	DescriptorSet descSet;
@@ -32,7 +215,7 @@ struct Picture {
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
 };
 
-struct Statue {
+struct Picture {
 	Model model;
 	Texture texture;
 	DescriptorSet descSet;
@@ -131,8 +314,6 @@ void copyInMemory(Picture picture, int currentImage, UniformBufferObject ubo, vo
 	vkUnmapMemory(device, picture.descSet.uniformBuffersMemory[0][currentImage]);
 };
 
-
-
 void Statue::cleanup() {
 	descSet.cleanup();
 	texture.cleanup();
@@ -166,17 +347,20 @@ void Statue::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentIma
 	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 }
 
-void copyInMemory(Statue statue, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
-	vkMapMemory(device, statue.descSet.uniformBuffersMemory[0][currentImage], 0,
+void copyInMemory(Statue obj, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
+	vkMapMemory(device, obj.descSet.uniformBuffersMemory[0][currentImage], 0,
 		sizeof(ubo), 0, &data);
 	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(device, statue.descSet.uniformBuffersMemory[0][currentImage]);
+	vkUnmapMemory(device, obj.descSet.uniformBuffersMemory[0][currentImage]);
 };
+
+// -------------------- start Skybox --------------------
 
 struct Skybox {
 	Model model;
 	Texture texture;
 	Pipeline pipeline;
+
 	DescriptorSet DS;
 	DescriptorSetLayout DSL;
 	UniformBufferObject ubo;
@@ -242,15 +426,16 @@ void Skybox::init(BaseProject *bp, DescriptorSetLayout *global) {
 	ubo.model = glm::scale(glm::mat4(1.0f), glm::vec3(50, 50, 50));
 }
 
-
+// -------------------- end Skybox --------------------
 
 class MyProject : public BaseProject {
-
 	protected:
 	// Here you list all the Vulkan objects you need:
 	// Camera
 	glm::vec3 CamAng = glm::vec3(0.0f);
 	glm::vec3 CamPos = glm::vec3(-0.2f, 0.95f, 14.5f);
+
+	Player player;
 
 	// Descriptor Layouts [what will be passed to the shaders]
 	DescriptorSetLayout DSL_global;
@@ -373,6 +558,7 @@ class MyProject : public BaseProject {
 
 
 		//-----Pictures----//
+
 		//Matisse
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(-1.9f, 0.9f, 12.5f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.009f, 0.009f, 0.009f))*
@@ -459,15 +645,7 @@ class MyProject : public BaseProject {
 		Cavalli.init(&DSL_museum, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Cavalli.png", temp);
 
 
-		//Volpedo Fourth Estate
-		/*
-		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.8f, 1.2f, 13.0f))*
-			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
-			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
-			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(0.15f, 0.15f, 0.15f));
-		Volpedo_FourthEstate.init(&DSL_pic, this, MODEL_PATH + "Volpedo_FourthEstate.obj", TEXTURE_PATH + "Volpedo_FourthEstate.png", temp);*/
-		
+		//Volpedo Fourth Estate		
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.8f, 0.7f, 14.6f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.016f, 0.016f, 0.016f))*
@@ -642,6 +820,14 @@ class MyProject : public BaseProject {
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
 		Fourth2.init(&DSL_museum, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "TheFourthSign.png", temp);
 
+		for (int i = 0; i < Museum.model.indices.size() - 1; i += 3) {
+			player.addTriangle(Triangle{
+					Museum.pco.worldMat * glm::vec4(Museum.model.vertices[Museum.model.indices[i]].pos, 1.0f),
+					Museum.pco.worldMat * glm::vec4(Museum.model.vertices[Museum.model.indices[i + 1]].pos, 1.0f),
+					Museum.pco.worldMat * glm::vec4(Museum.model.vertices[Museum.model.indices[i + 2]].pos, 1.0f)
+				});
+		}
+		
 
 		//----Skybox---//
 		skybox.init(this, &DSL_global);
@@ -650,6 +836,8 @@ class MyProject : public BaseProject {
 			{0, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
 		});
 
+		// init the player with the right aspect ratio of the image
+		player.init(swapChainExtent.width / (float)swapChainExtent.height, { -0.2f, 0.95f, 14.94f });
 	}
 
 	// Here you destroy all the objects you created!		
@@ -803,101 +991,46 @@ class MyProject : public BaseProject {
 		double m_dy = old_ypos - ypos;
 		old_xpos = xpos; old_ypos = ypos;
 
-		glm::vec3 oldCamPos = CamPos;
+		// ------ camera movement ------
 
+		glm::vec3 viewChange = glm::vec3(0.0f, 0.0f, 0.0f);
 		glfwSetInputMode(window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-			CamAng.y -= m_dx * ROT_SPEED / MOUSE_RES;
-			CamAng.x -= m_dy * ROT_SPEED / MOUSE_RES;
+			viewChange.y -= m_dx * ROT_SPEED / MOUSE_RES;
+			viewChange.x -= m_dy * ROT_SPEED / MOUSE_RES;
 		}
-		/*
-		if (hideMouse) {
-			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-			hideMouse = false; isMouseHidden = true;
-		}
-		if (showMouse) {
-			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-			showMouse = false; isMouseHidden = false;
-		}
-		CamAng.y += m_dx * ROT_SPEED / MOUSE_RES;
-		CamAng.x += m_dy * ROT_SPEED / MOUSE_RES;
-		*/
 
 		if (glfwGetKey(window, GLFW_KEY_LEFT)) {
-			CamAng.y += deltaT * ROT_SPEED;
+			viewChange.y = deltaT * ROT_SPEED;
 		}
 		if (glfwGetKey(window, GLFW_KEY_RIGHT)) {
-			CamAng.y -= deltaT * ROT_SPEED;
+			viewChange.y = -(deltaT * ROT_SPEED);
 		}
 		if (glfwGetKey(window, GLFW_KEY_UP)) {
-			CamAng.x += deltaT * ROT_SPEED;
+			viewChange.x = deltaT * ROT_SPEED;
 		}
 		if (glfwGetKey(window, GLFW_KEY_DOWN)) {
-			CamAng.x -= deltaT * ROT_SPEED;
+			viewChange.x = -(deltaT * ROT_SPEED);
 		}
 
-		glm::mat3 CamDir = glm::mat3(glm::rotate(glm::mat4(1.0f), CamAng.y, glm::vec3(0.0f, 1.0f, 0.0f))) *
-			glm::mat3(glm::rotate(glm::mat4(1.0f), CamAng.x, glm::vec3(1.0f, 0.0f, 0.0f))) *
-			glm::mat3(glm::rotate(glm::mat4(1.0f), CamAng.z, glm::vec3(0.0f, 0.0f, 1.0f)));
+		player.moveHead(viewChange);
+
+		// ------ player movement ------
 
 		if (glfwGetKey(window, GLFW_KEY_A)) {
-			CamPos -= MOVE_SPEED * glm::vec3(glm::rotate(glm::mat4(1.0f), CamAng.y,
-				glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec4(1, 0, 0, 1)) * deltaT;
+			player.left(deltaT);
 		}
 		if (glfwGetKey(window, GLFW_KEY_D)) {
-			CamPos += MOVE_SPEED * glm::vec3(glm::rotate(glm::mat4(1.0f), CamAng.y,
-				glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec4(1, 0, 0, 1)) * deltaT;
+			player.right(deltaT);
 		}
 		if (glfwGetKey(window, GLFW_KEY_S)) {
-			CamPos += MOVE_SPEED * glm::vec3(glm::rotate(glm::mat4(1.0f), CamAng.y,
-				glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec4(0, 0, 1, 1)) * deltaT;
+			player.backward(deltaT);
 		}
 		if (glfwGetKey(window, GLFW_KEY_W)) {
-			CamPos -= MOVE_SPEED * glm::vec3(glm::rotate(glm::mat4(1.0f), CamAng.y,
-				glm::vec3(0.0f, 1.0f, 0.0f)) * glm::vec4(0, 0, 1, 1)) * deltaT;
+			player.forward(deltaT);
 		}
 
-		if (glfwGetKey(window, GLFW_KEY_F)) {
-			CamPos -= MOVE_SPEED * glm::vec3(0, 1, 0) * deltaT;
-		}
-		if (glfwGetKey(window, GLFW_KEY_R)) {
-			CamPos += MOVE_SPEED * glm::vec3(0, 1, 0) * deltaT;
-		}
-
-		/*
-		if (glfwGetKey(window, GLFW_KEY_ESCAPE)) {
-			if (isMouseHidden) showMouse = true;
-			else hideMouse = true;
-		}
-		*/
-
-		//---------------Limits-----------//
-		/*
-		if (CamPos.x > 5.0f || CamPos.x < -5.0f || CamPos.z < -2.0f || CamPos.z > 10.0f) {
-			CamPos = oldCamPos;
-		}*/
-
-		/*
-		printf("Dance x: %f\n", TheDance.pco.worldMat[3][0]);
-		printf("CamPos: %f\n", (CamPos.x + 0.01f));
-		printf("Position: %f\n", glm::abs(CamPos.x + 0.01f) - glm::abs(TheDance.pco.worldMat[3][0]));
-		
-		if (abs(CamPos.x) + 1.0f >= abs(TheDance.pco.worldMat[3][0])) {
-			printf("Collision!\n");
-			CamPos = oldCamPos;
-		}
-		else {
-			printf("No Collision!\n");
-		}
-		*/
-
-
-		glm::mat4 CamMat = glm::translate(glm::transpose(glm::mat4(CamDir)), -CamPos);
-
-		glm::mat4 Prj = glm::perspective(glm::radians(60.0f),
-			swapChainExtent.width / (float)swapChainExtent.height,
-			0.1f, 100.0f);
-		Prj[1][1] *= -1;
+		// ------ copying data into buffers ------
 
 		void* data;
 
@@ -926,15 +1059,11 @@ class MyProject : public BaseProject {
 		// skybox -> ma se tanto è costante una volta che lo ho copiato non rimane li per sempre?
 		skybox.updateVkMemory(device, currentImage, data);
 	}
-
-	void calculateIntersection() {
-
-	}
 };
 
 // This is the main: probably you do not need to touch this!
 int main() {
-    MyProject app;
+	MyProject app;
 
     try {
         app.run();
