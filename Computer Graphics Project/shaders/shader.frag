@@ -11,8 +11,7 @@ layout(location = 0) out vec4 outColor;
 layout(set = 0, binding = 0) uniform GlobalUniformBufferObject {
 	mat4 view;
 	mat4 proj;
-	vec3 lightPos1;
-	vec3 lightPos2;
+	vec3 lightPos[3];
 	vec3 lightColor;
 	vec4 coneInOutDecayExp;
 } gubo;
@@ -27,9 +26,23 @@ vec3 point_light_color(vec3 lightPos, vec3 pos) {
 	return gubo.lightColor * pow(gubo.coneInOutDecayExp.z/length(lightPos - pos),gubo.coneInOutDecayExp.w);
 }
 
+vec4 createPointLight(vec3 lightPos, vec3 pos, vec3 N, vec3 V, vec3 diffColor, float specPower){
+	vec3 lightDir = normalize(lightPos - pos);
+	vec3 lightColor = gubo.lightColor * pow(gubo.coneInOutDecayExp.z / length(lightPos - pos), gubo.coneInOutDecayExp.w);
+	vec3 R = -reflect(lightDir, N);
+	vec3 lambertDiffuse = diffColor * max(dot(N, lightDir), 0.0f);
+	vec3 phongSpecular = vec3(pow(max(dot(R,V),0.0f), specPower));
+
+	vec4 pointLight = vec4((lambertDiffuse + phongSpecular) * lightColor, 1.0f);
+	return pointLight;
+}
+
 void main() {
 	const vec3  diffColor = texture(texSampler, fragTexCoord).rgb;
 	const float specPower = 64.0f;
+	vec3 N = normalize(fragNorm);
+	vec3 V = normalize((gubo.view[3]).xyz - fragPos);
+	/*--------------------------------------------------------------
 	//const vec3  L = vec3(-0.4830f, 0.8365f, -0.2588f);
 	const vec3  L = vec3(0.0f, -0.5f, 0.0f);
 	//const vec3 topColor = vec3(0.325f,0.847f,0.9843f);
@@ -49,10 +62,10 @@ void main() {
 	lC1 = point_light_color(gubo.lightPos1, fragPos);
 	lC2 = point_light_color(gubo.lightPos2, fragPos);
 	
-	vec3 N = normalize(fragNorm);
+	
 	vec3 R1 = -reflect(lD1, N);
 	vec3 R2 = -reflect(lD2, N);
-	vec3 V = normalize((gubo.view[3]).xyz - fragPos);
+	
 	float sigma = 0.5;
 	
 	//Oren_Nayar_Diffuse
@@ -75,15 +88,17 @@ void main() {
 	vec3 specular1 = vec3(pow(max(dot(R1,V), 0.0f), specPower));
 	vec3 specular2 = vec3(pow(max(dot(R2,V), 0.0f), specPower));
 
-
-
 	// Hemispheric ambient
 	vec3 HemiDir = vec3(0.0f, 1.0f, 0.0f);
 	vec3 l_A = (((dot(N,HemiDir)+1.0f)/2.0f)*bottomColor) + (((1.0f-dot(N,HemiDir))/2.0f)*topColor);
 	vec3 ambient  = (vec3(0.1f,0.1f, 0.1f) * (1.0f + N.y) + vec3(0.0f,0.0f, 0.1f) * (1.0f - N.y)) * diffColor;
 	//vec3 ambient = (vec3(N.y + 1.0f) * diffuse) + l_A*vec3(0.1f, 0.1f, 0.1f);
-
-	
+	*/
 	//outColor = vec4(clamp(ambient + diffuse + specular, vec3(0.0f), vec3(1.0f)), 1.0f);
-	outColor = vec4((diffuse1 + specular1) * lC1, 1.0f) + vec4((diffuse2 + specular2) * lC2, 1.0f);
+	vec4 outPut = createPointLight(gubo.lightPos[0], fragPos, N, V, diffColor, specPower);
+	for (int i = 1; i < (gubo.lightPos).length(); i++){
+		outPut = outPut + createPointLight(gubo.lightPos[i], fragPos, N, V, diffColor, specPower);
+	}
+	outColor = outPut;
+	//outColor = vec4((diffuse1 + specular1) * lC1, 1.0f) + vec4((diffuse2 + specular2) * lC2, 1.0f);
 }

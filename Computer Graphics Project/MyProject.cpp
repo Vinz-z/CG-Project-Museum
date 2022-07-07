@@ -9,7 +9,7 @@ const std::string TEXTURE_PATH = "textures/";
 struct GlobalUniformBufferObject {
 	alignas(16) glm::mat4 view; // alignas lo usa cpp per allineare i byte della matrice... 
 	alignas(16) glm::mat4 proj; // la shader puo avere problemi con dei padding tra campi di una struttura
-	alignas(16) glm::vec3 lightPos[2];
+	alignas(16) glm::vec3 lightPos[3];
 	alignas(16) glm::vec3 lightColor;
 	alignas(16) glm::vec4 coneInOutDecayExp;
 };
@@ -905,6 +905,7 @@ class MyProject : public BaseProject {
 		gubo.proj = Prj;
 		gubo.lightPos[0] = glm::vec3(5.0f, 1.5f, 12.3f);
 		gubo.lightPos[1] = glm::vec3(-0.5f, 1.5f, 0.0f);
+		gubo.lightPos[2] = glm::vec3(-0.2f,1.5f, 12.5f);
 		gubo.lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
 		gubo.coneInOutDecayExp = glm::vec4(0.9f, 0.92f, 0.5f, 1.0f);
 
