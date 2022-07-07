@@ -17,21 +17,6 @@ struct UniformBufferObject {
 	alignas(16) glm::mat4 model;
 };
 
-struct SceneObject {
-	Texture texture;
-	Model mesh;
-	Model colliderMesh;
-
-	DescriptorSet DS;
-	DescriptorSetLayout DSL;
-	UniformBufferObject ubo;
-
-	void init(DescriptorSetLayout *global, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 initialPosition) {}
-	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {}
-	void cleanup() {}
-	void handleClick() {}
-};
-
 // -------------------- start Player --------------------
 
 glm::vec3 vectorProjection(glm::vec3 from, glm::vec3 to) {
@@ -85,7 +70,6 @@ struct Camera {
 			glm::rotate(glm::mat4(1.0), glm::clamp(angles.x, -glm::half_pi<float>(), glm::half_pi<float>()), glm::vec3(1, 0, 0)) *
 			glm::rotate(glm::mat4(1.0), angles.y, glm::vec3(0, 1, 0)) *
 			glm::vec4(0, 0, 1, 1);
-		//return glm::transpose(camera) * glm::vec4(0,0,1,1);
 	}
 
 private:
@@ -217,18 +201,19 @@ private:
 
 // -------------------- end Player --------------------
 
-// -------------------- start Picture --------------------
+struct Statue {
+	Model model;
+	Texture texture;
+	DescriptorSet descSet;
 
-struct Picture : SceneObject {
 	PushConstantObject pco;
 
-	void init(DescriptorSetLayout *global, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 initialPosition);
-	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
-	void handleClick();
 	void cleanup();
+	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position);
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
 };
 
-struct Statue {
+struct Picture {
 	Model model;
 	Texture texture;
 	DescriptorSet descSet;
@@ -253,15 +238,15 @@ struct Environment {
 };
 
 void Picture::cleanup(){
-	DS.cleanup();
+	descSet.cleanup();
 	texture.cleanup();
-	mesh.cleanup();
+	model.cleanup();
 }
 
 void Picture::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position) {
-	mesh.init(bs, modelString);
+	model.init(bs, modelString);
 	texture.init(bs, textureString);
-	DS.init(bs, DSL, {
+	descSet.init(bs, DSL, {
 		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
 		{1, TEXTURE, 0, &texture}
 	});
@@ -269,12 +254,12 @@ void Picture::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelS
 }
 
 void Picture::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
-	VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
+	VkBuffer vertexBuffers[] = { model.vertexBuffer };
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-		pipeline.pipelineLayout, 1, 1, &DS.descriptorSets[currentImage], 
+		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage], 
 		0, nullptr);
 
 	// push constant before drawing the picture
@@ -283,7 +268,7 @@ void Picture::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentIm
 	);
 
 	// draw the picture
-	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mesh.indices.size()), 1, 0, 0, 0);
+	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 }
 
 void Environment::cleanup() {
@@ -327,31 +312,16 @@ void copyInMemory(Picture picture, int currentImage, UniformBufferObject ubo, vo
 	vkUnmapMemory(device, picture.descSet.uniformBuffersMemory[0][currentImage]);
 };
 
-// -------------------- start Statue --------------------
-
-struct Statue : SceneObject {
-	PushConstantObject pco;
-
-	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position);
-	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
-	void handleClick();
-	void cleanup();
-};
-
-void Statue::handleClick() {
-	std::cout << "statua cliccato" << std::endl;
-}
-
 void Statue::cleanup() {
-	DS.cleanup();
+	descSet.cleanup();
 	texture.cleanup();
-	mesh.cleanup();
+	model.cleanup();
 }
 
 void Statue::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position) {
-	mesh.init(bs, modelString);
+	model.init(bs, modelString);
 	texture.init(bs, textureString);
-	DS.init(bs, DSL, {
+	descSet.init(bs, DSL, {
 		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
 		{1, TEXTURE, 0, &texture}
 		});
@@ -359,12 +329,12 @@ void Statue::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelSt
 }
 
 void Statue::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
-	VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
+	VkBuffer vertexBuffers[] = { model.vertexBuffer };
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		pipeline.pipelineLayout, 1, 1, &DS.descriptorSets[currentImage],
+		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
 		0, nullptr);
 
 	// push constant before drawing the picture
@@ -372,16 +342,14 @@ void Statue::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentIma
 		0, sizeof(PushConstantObject), &pco
 	);
 
-	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mesh.indices.size()), 1, 0, 0, 0);
+	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 }
 
-// -------------------- end Statue --------------------
-
-void copyInMemory(SceneObject obj, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
-	vkMapMemory(device, obj.DS.uniformBuffersMemory[0][currentImage], 0,
+void copyInMemory(Statue obj, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
+	vkMapMemory(device, obj.descSet.uniformBuffersMemory[0][currentImage], 0,
 		sizeof(ubo), 0, &data);
 	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(device, obj.DS.uniformBuffersMemory[0][currentImage]);
+	vkUnmapMemory(device, obj.descSet.uniformBuffersMemory[0][currentImage]);
 };
 
 // -------------------- start Skybox --------------------
@@ -550,10 +518,6 @@ class MyProject : public BaseProject {
 		glfwGetCursorPos(window, &halfw, &halfh);
 		glm::mat4 temp = glm::mat4(1.0f);
 
-		ubo_museum.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
-			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
-
 		// Descriptor Layouts [what will be passed to the shaders]
 		DSL_museum.init(this, {
 					// this array contains the binding:
@@ -679,15 +643,7 @@ class MyProject : public BaseProject {
 		Cavalli.init(&DSL_museum, this, MODEL_PATH + "pictures.obj", TEXTURE_PATH + "Cavalli.png", temp);
 
 
-		//Volpedo Fourth Estate
-		/*
-		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.8f, 1.2f, 13.0f))*
-			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))*
-			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f))*
-			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
-			glm::scale(glm::mat4(1.0f), glm::vec3(0.15f, 0.15f, 0.15f));
-		Volpedo_FourthEstate.init(&DSL_pic, this, MODEL_PATH + "Volpedo_FourthEstate.obj", TEXTURE_PATH + "Volpedo_FourthEstate.png", temp);*/
-		
+		//Volpedo Fourth Estate		
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(6.8f, 0.7f, 14.6f))*
 			glm::rotate(glm::mat4(1.0f), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.016f, 0.016f, 0.016f))*
@@ -862,11 +818,11 @@ class MyProject : public BaseProject {
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.08f, 0.08f, 0.08f));
 		Fourth2.init(&DSL_museum, this, MODEL_PATH + "Sign.obj", TEXTURE_PATH + "TheFourthSign.png", temp);
 
-		for (int i = 0; i < M_Museum.indices.size() - 1; i += 3) {
+		for (int i = 0; i < Museum.model.indices.size() - 1; i += 3) {
 			player.addTriangle(Triangle{
-					ubo_museum.model * glm::vec4(M_Museum.vertices[M_Museum.indices[i]].pos, 1.0f),
-					ubo_museum.model * glm::vec4(M_Museum.vertices[M_Museum.indices[i + 1]].pos, 1.0f),
-					ubo_museum.model * glm::vec4(M_Museum.vertices[M_Museum.indices[i + 2]].pos, 1.0f)
+					Museum.pco.worldMat * glm::vec4(Museum.model.vertices[Museum.model.indices[i]].pos, 1.0f),
+					Museum.pco.worldMat * glm::vec4(Museum.model.vertices[Museum.model.indices[i + 1]].pos, 1.0f),
+					Museum.pco.worldMat * glm::vec4(Museum.model.vertices[Museum.model.indices[i + 2]].pos, 1.0f)
 				});
 		}
 		
@@ -1078,8 +1034,6 @@ class MyProject : public BaseProject {
 
 		//Update the Camera
 		GlobalUniformBufferObject gubo{};
-		gubo.view = CamMat;
-		gubo.proj = Prj;
 		gubo.lightPos[0] = glm::vec3(5.0f, 1.5f, 12.3f);
 		gubo.lightPos[1] = glm::vec3(-0.5f, 1.5f, 0.0f);
 		gubo.lightPos[2] = glm::vec3(-0.2f,1.5f, 12.5f);
