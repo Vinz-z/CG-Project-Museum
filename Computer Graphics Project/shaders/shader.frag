@@ -15,7 +15,7 @@ layout(set = 0, binding = 0) uniform GlobalUniformBufferObject {
 	vec3 lightColor;
 	vec3 sunLightDir;
 	vec3 sunLightColor;
-	vec4 coneInOutDecayExp;
+	vec2 coneInOutDecayExp;
 } gubo;
 
 vec3 point_light_dir(vec3 lightPos ,vec3 pos) {
@@ -25,7 +25,7 @@ vec3 point_light_dir(vec3 lightPos ,vec3 pos) {
 
 vec3 point_light_color(vec3 lightPos, vec3 pos) {
 	// Point light color
-	return gubo.lightColor * pow(gubo.coneInOutDecayExp.z/length(lightPos - pos),gubo.coneInOutDecayExp.w);
+	return gubo.lightColor * pow(gubo.coneInOutDecayExp.x/length(lightPos - pos),gubo.coneInOutDecayExp.y);
 }
 
 vec3 Oren_Nayar_Diffuse(vec3 LightDirection, vec3 N, vec3 V, vec3 MainColor, float sigma) {
@@ -42,7 +42,7 @@ vec3 Oren_Nayar_Diffuse(vec3 LightDirection, vec3 N, vec3 V, vec3 MainColor, flo
 
 vec4 createPointLight(vec3 lightPos, vec3 pos, vec3 N, vec3 V, vec3 diffColor, float specPower){
 	vec3 lightDir = normalize(lightPos - pos);
-	vec3 lightColor = gubo.lightColor * pow(gubo.coneInOutDecayExp.z / length(lightPos - pos), gubo.coneInOutDecayExp.w);
+	vec3 lightColor = gubo.lightColor * pow(gubo.coneInOutDecayExp.x / length(lightPos - pos), gubo.coneInOutDecayExp.y);
 	vec3 R = -reflect(lightDir, N);
 	vec3 lambertDiffuse = diffColor * max(dot(N, lightDir), 0.0f);
 	vec3 phongSpecular = vec3(pow(max(dot(R,V),0.0f), specPower));
