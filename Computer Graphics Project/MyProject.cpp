@@ -2,8 +2,10 @@
 #include <list>
 #include <json.hpp>
 
+
 const std::string MODEL_PATH = "models/";
 const std::string TEXTURE_PATH = "textures/";
+
 
 // The uniform buffer object used in this example
 struct GlobalUniformBufferObject {
@@ -13,12 +15,21 @@ struct GlobalUniformBufferObject {
 	alignas(16) glm::vec3 lightColor;
 	alignas(16) glm::vec3 sunLightDir;
 	alignas(16) glm::vec3 sunLightColor;
-	alignas(16) glm::vec4 coneInOutDecayExp;
+	alignas(16) glm::vec2 coneInOutDecayExp; //(g, beta)
 };
 
 struct UniformBufferObject {
 	alignas(16) glm::mat4 model;
 };
+
+struct Character {
+	unsigned int TextureID;  // ID handle of the glyph texture
+	glm::ivec2   Size;       // Size of glyph
+	glm::ivec2   Bearing;    // Offset from baseline to left/top of glyph
+	unsigned int Advance;    // Offset to advance to next glyph
+};
+
+std::map<char, Character> Characters;
 
 // -------------------- text rendering --------------------
 
@@ -588,10 +599,10 @@ class MyProject : public BaseProject {
 		texturesInPool = 33;
 		setsInPool = texturesInPool+10;
 	}
-	
+
 	// Here you load and setup all your Vulkan objects
 	void localInit() {
-
+		
 		// setting things for glfw
 		//double halfw = windowWidth * 1.0 / 2;
 		//double halfh = windowHeight * 1.0 / 2;
@@ -820,7 +831,7 @@ class MyProject : public BaseProject {
 		gubo.lightColor = glm::vec3(0.0f, 0.0f, 0.0f);
 		gubo.sunLightDir = glm::vec3(cos(glm::radians(135.0f)), sin(glm::radians(135.0f)), sin(glm::radians(135.0f))); //sun (direct) light
 		gubo.sunLightColor = glm::vec3(0.99f,0.9f,0.44f);
-		gubo.coneInOutDecayExp = glm::vec4(0.9f, 0.92f, 0.5f, 1.5f);
+		gubo.coneInOutDecayExp = glm::vec2(0.5f, 1.5f);
 
 		// gubo
 		vkMapMemory(device, DS_global.uniformBuffersMemory[0][currentImage], 0, sizeof(gubo), 0, &data);

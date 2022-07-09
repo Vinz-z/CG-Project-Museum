@@ -14,6 +14,9 @@
 #include <algorithm>
 #include <fstream>
 #include <array>
+//FreeType
+#include <ft2build.h>
+#include FT_FREETYPE_H 
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
@@ -29,8 +32,6 @@
 // New in Lesson 23 - to load images
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-
-//
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
