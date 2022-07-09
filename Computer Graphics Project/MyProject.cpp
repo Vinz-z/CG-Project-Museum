@@ -20,6 +20,19 @@ struct UniformBufferObject {
 	alignas(16) glm::mat4 model;
 };
 
+// -------------------- text rendering --------------------
+
+struct Glyph {
+	FT_Face face;
+	FT_UInt glyphIndex;
+	int left;
+	int top;
+	int width;
+	int height;
+	int advance;
+	std::shared_ptr<Texture> texture;
+};
+
 // -------------------- start Player --------------------
 
 glm::vec3 vectorProjection(glm::vec3 from, glm::vec3 to) {
