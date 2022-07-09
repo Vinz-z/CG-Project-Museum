@@ -180,7 +180,7 @@ struct Player {
 
 	void init(float aspectRatio, glm::vec3 initPos) {
 		position = initPos;
-		camera.init(glm::vec3(0.0f, 0.0f, 0.0f), position, 0.1f, 100.0f, 70.0f, aspectRatio);
+		camera.init(glm::vec3(0.0f, 0.0f, 0.0f), position, 0.1f, 200.0f, 70.0f, aspectRatio);
 	}
 
 	void forward(float dt) {
@@ -530,14 +530,14 @@ void Skybox::init(BaseProject *bp, DescriptorSetLayout *global) {
 
 	pipeline.init(bp, "shaders/skyboxVert.spv", "shaders/skyboxFrag.spv", { global, &DSL });
 	model.init(bp, MODEL_PATH + "skybox_cube.obj");
-	texture.init(bp, TEXTURE_PATH + "skybox.png");
+	texture.init(bp, TEXTURE_PATH + "skybox toon.jpg");
 
 	DS.init(bp, &DSL, {
 		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
 		{1, TEXTURE, 0, &texture}
 		});
 
-	ubo.model = glm::scale(glm::mat4(1.0f), glm::vec3(50, 50, 50));
+	ubo.model = glm::scale(glm::mat4(1.0f), glm::vec3(100, 100, 100));
 }
 
 // -------------------- end Skybox --------------------
@@ -814,9 +814,9 @@ class MyProject : public BaseProject {
 		gubo.lightPos[5] = glm::vec3(5.0f, 2.0f, 8.4f);
 		gubo.lightPos[6] = glm::vec3(5.0f, 2.0f, 3.7f);
 		gubo.lightPos[7] = glm::vec3(5.0f, 2.0f, -1.0f);
-		gubo.lightColor = glm::vec3(0.0f, 0.0f, 0.0f);
-		gubo.sunLightDir = glm::vec3(cos(glm::radians(135.0f)), sin(glm::radians(135.0f)), sin(glm::radians(135.0f))); //sun (direct) light
-		gubo.sunLightColor = glm::vec3(0.99f,0.9f,0.44f);
+		gubo.lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
+		gubo.sunLightDir = glm::vec3(cos(glm::radians(time * 10)), sin(glm::radians(time * 10)), 0.0f); //sun (direct) light
+		gubo.sunLightColor = glm::vec3(0.99f,0.9f,0.44f) * glm::clamp(sin(glm::radians(time * 10)), 0.0f, 1.0f);
 		gubo.coneInOutDecayExp = glm::vec2(0.5f, 1.5f);
 
 		// gubo
