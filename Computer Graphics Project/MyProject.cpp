@@ -95,7 +95,8 @@ struct Clickable {
 
 	bool isClicked(Ray ray) {
 		for (Triangle& t : body) {
-			if (t.lineIntersectInside(ray)) return true;
+			auto intersection = t.lineIntersectInside(ray);
+			if (intersection) return glm::length(ray.origin - *intersection) < 1.5;
 		}
 
 		return false;
