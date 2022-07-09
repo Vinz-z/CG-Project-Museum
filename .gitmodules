@@ -1,3 +1,9 @@
 [submodule "json"]
 	path = json
 	url = https://github.com/nlohmann/json.git
+[submodule "Dependencies/freetype2"]
+	path = Dependencies/freetype2
+	url = https://github.com/aseprite/freetype2
+[submodule "Nuova cartella/freetype-windows-binaries"]
+	path = Nuova cartella/freetype-windows-binaries
+	url = https://github.com/ubawurinna/freetype-windows-binaries
