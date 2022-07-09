@@ -804,8 +804,8 @@ class MyProject : public BaseProject {
 		gubo.lightPos[5] = glm::vec3(5.0f, 2.0f, 8.4f);
 		gubo.lightPos[6] = glm::vec3(5.0f, 2.0f, 3.7f);
 		gubo.lightPos[7] = glm::vec3(5.0f, 2.0f, -1.0f);
-		gubo.lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
-		gubo.sunLightDir = glm::vec3(cos(glm::radians(135.0f)), sin(glm::radians(135.0f)), 0.0f); //sun (direct) light
+		gubo.lightColor = glm::vec3(0.0f, 0.0f, 0.0f);
+		gubo.sunLightDir = glm::vec3(cos(glm::radians(135.0f)), sin(glm::radians(135.0f)), sin(glm::radians(135.0f))); //sun (direct) light
 		gubo.sunLightColor = glm::vec3(0.99f,0.9f,0.44f);
 		gubo.coneInOutDecayExp = glm::vec4(0.9f, 0.92f, 0.5f, 1.5f);
 

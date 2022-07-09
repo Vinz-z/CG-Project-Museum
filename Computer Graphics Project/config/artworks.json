@@ -138,7 +138,7 @@
             "title": "Sogno causato da una puntura di vespa uscito da un melograno - Dali",
             "src": "Dream.png",
             "model": "pictures.obj",
-            "scale": [0.0057, 0.0037962, 0.0057],
+            "scale": [0.004, 0.00508, 0.004],
             "rotate": [0, 180, 0],
             "translate": [6.8, 0.9, 9.9],
             "description": "questo faceva uso di oppio - van gogh"
@@ -235,7 +235,7 @@
             "src": "VanGoghSign.png",
             "scale": [0.08, 0.08, 0.08],
             "rotate": [-90, 180, 180],
-            "translate": [-0.35, 2.0, 1.7]
+            "translate": [-0.35, 2.0, 1.6]
         },
         {
             "src": "Expressionism.png",
@@ -247,13 +247,13 @@
             "src": "Expressionism.png",
             "scale": [0.08, 0.08, 0.08],
             "rotate": [-90, 180, 180],
-            "translate": [4.15, 2.0, 1.7]
+            "translate": [4.15, 2.0, 1.6]
         },
         {
             "src": "GuernicaSign.png",
             "scale": [0.08, 0.08, 0.08],
             "rotate": [-90, 0, 180],
-            "translate": [-0.35, 2.0, 1.85]
+            "translate": [-0.35, 2.0, 1.9]
         },
         {
             "src": "GuernicaSign.png",
@@ -265,13 +265,13 @@
             "src": "Sculptures.png",
             "scale": [0.08, 0.08, 0.08],
             "rotate": [-90, 0, 180],
-            "translate": [4.15, 2.0, 1.85]
+            "translate": [4.15, 2.0, 1.9]
         },
         {
             "src": "Sculptures.png",
             "scale": [0.08, 0.08, 0.08],
             "rotate": [-90, 180, -90],
-            "translate": [2.38, 2.0, -1.0]
+            "translate": [2.3, 2.0, -1.0]
         },
         {
             "src": "Matisse.png",
@@ -283,7 +283,7 @@
             "src": "Matisse.png",
             "scale": [0.08, 0.08, 0.08],
             "rotate": [-90, 180, 180],
-            "translate": [-0.35, 2.0, 10.07]
+            "translate": [-0.35, 2.0, 10.7]
         },
         {
             "src": "TheFourthSign.png",
@@ -295,7 +295,7 @@
             "src": "TheFourthSign.png",
             "scale": [0.08, 0.08, 0.08],
             "rotate": [-90, 180, -90],
-            "translate": [2.38, 2.0, 13.6]
+            "translate": [2.3, 2.0, 13.6]
         }
     ]
 }
