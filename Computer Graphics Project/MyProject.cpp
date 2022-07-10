@@ -352,6 +352,69 @@ void Artwork::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentIm
 	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 }
 
+struct Sofa {
+	std::string textureName;
+	std::vector<float> translate;
+	std::vector<float> rotate;
+	std::vector<float> scale;
+
+	Model model;
+	Texture texture;
+	DescriptorSet descSet;
+
+	PushConstantObject pco;
+
+	void cleanup();
+	void init(DescriptorSetLayout *DSL, BaseProject *bs);
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+};
+
+void from_json(const nlohmann::json& j, Sofa& o) {
+	j.at("src").get_to(o.textureName);
+	j.at("translate").get_to(o.translate);
+	j.at("scale").get_to(o.scale);
+	j.at("rotate").get_to(o.rotate);
+}
+
+void Sofa::init(DescriptorSetLayout *DSL, BaseProject *bs) {
+	model.init(bs, MODEL_PATH + "Ottoman.obj");
+	texture.init(bs, TEXTURE_PATH + textureName);
+	descSet.init(bs, DSL, {
+		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+		{1, TEXTURE, 0, &texture}
+		});
+
+	pco.worldMat = glm::translate(glm::mat4(1), { translate[0], translate[1], translate[2] }) *
+		glm::rotate(glm::mat4(1), glm::radians(rotate[1]), glm::vec3(0, 1, 0)) *
+		glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
+		glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
+		glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
+}
+
+void Sofa::cleanup() {
+	descSet.cleanup();
+	texture.cleanup();
+	model.cleanup();
+}
+
+void Sofa::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
+	VkBuffer vertexBuffers[] = { model.vertexBuffer };
+	VkDeviceSize offsets[] = { 0 };
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
+		0, nullptr);
+
+	// push constant before drawing the picture
+	vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+		0, sizeof(PushConstantObject), &pco
+	);
+
+	// draw the picture
+	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+}
+
 struct Sign {
 	std::string textureName;
 	std::vector<float> translate;
@@ -546,6 +609,7 @@ class MyProject : public BaseProject {
 	Player player;
 	std::list<Artwork> artworks;
 	std::list<Sign> signs;
+	std::list<Sofa> sofas;
 
 	// time
 	std::chrono::time_point<std::chrono::steady_clock> startTime;
@@ -582,8 +646,8 @@ class MyProject : public BaseProject {
 		
 		// Descriptor pool sizes  !!!! -> ????? sono cazzo giusti ?????
 		uniformBlocksInPool = 2;
-		texturesInPool = 33;
-		setsInPool = texturesInPool+10;
+		texturesInPool = 34;
+		setsInPool = texturesInPool+10+6;
 	}
 
 	// Here you load and setup all your Vulkan objects
@@ -650,6 +714,11 @@ class MyProject : public BaseProject {
 			signs.push_front(sign);
 		}
 
+		for (auto& sofa : j_artworks["sofas"].get<std::vector<Sofa>>()) {
+			sofa.init(&DSL_museum, this);
+			sofas.push_front(sofa);
+		}
+
 		for (int i = 0; i < Museum.model.indices.size() - 1; i += 3) {
 			player.addTriangle(Triangle{
 					Museum.pco.worldMat * glm::vec4(Museum.model.vertices[Museum.model.indices[i]].pos, 1.0f),
@@ -690,6 +759,10 @@ class MyProject : public BaseProject {
 			s.cleanup();
 		}
 
+		for (Sofa& s : sofas) {
+			s.cleanup();
+		}
+
 		DS_global.cleanup();
 
 		museumPipeline.cleanup();
@@ -727,6 +800,10 @@ class MyProject : public BaseProject {
 		}
 
 		for (Sign& s : signs) {
+			s.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+		}
+
+		for (Sofa& s : sofas) {
 			s.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		}
 
@@ -807,16 +884,16 @@ class MyProject : public BaseProject {
 		gubo.proj = player.camera.getProjectionMatrix();
 		gubo.view = player.camera.getCameraMatrix();
 		gubo.lightPos[0] = glm::vec3(1.0f, 2.0f, 13.0f); //point lights
-		gubo.lightPos[1] = glm::vec3(1.0f, 2.0f, 8.f);
+		gubo.lightPos[1] = glm::vec3(1.0f, 2.0f, 8.4f);
 		gubo.lightPos[2] = glm::vec3(1.0f, 2.0f, 3.7f);
 		gubo.lightPos[3] = glm::vec3(1.0f, 2.0f, -1.0f);
 		gubo.lightPos[4] = glm::vec3(5.0f, 2.05f, 13.0f);
 		gubo.lightPos[5] = glm::vec3(5.0f, 2.0f, 8.4f);
 		gubo.lightPos[6] = glm::vec3(5.0f, 2.0f, 3.7f);
 		gubo.lightPos[7] = glm::vec3(5.0f, 2.0f, -1.0f);
-		gubo.lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
-		gubo.sunLightDir = glm::vec3(cos(glm::radians(time * 10)), sin(glm::radians(time * 10)), 0.0f); //sun (direct) light
-		gubo.sunLightColor = glm::vec3(0.99f,0.9f,0.44f) * glm::clamp(sin(glm::radians(time * 10)), 0.0f, 1.0f);
+		gubo.lightColor = glm::vec3(1.0f, 0.96f, 0.934f);
+		gubo.sunLightDir = glm::vec3(cos(glm::radians(time * 5)), sin(glm::radians(time * 5)), 0.0f); //sun (direct) light
+		gubo.sunLightColor = glm::vec3(0.99f,0.9f,0.44f) * glm::clamp(sin(glm::radians(time * 5)), 0.0f, 1.0f);
 		gubo.coneInOutDecayExp = glm::vec2(0.5f, 1.5f);
 
 		// gubo
