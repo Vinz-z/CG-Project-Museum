@@ -22,28 +22,6 @@ struct UniformBufferObject {
 	alignas(16) glm::mat4 model;
 };
 
-struct Character {
-	unsigned int TextureID;  // ID handle of the glyph texture
-	glm::ivec2   Size;       // Size of glyph
-	glm::ivec2   Bearing;    // Offset from baseline to left/top of glyph
-	unsigned int Advance;    // Offset to advance to next glyph
-};
-
-std::map<char, Character> Characters;
-
-// -------------------- text rendering --------------------
-
-struct Glyph {
-	FT_Face face;
-	FT_UInt glyphIndex;
-	int left;
-	int top;
-	int width;
-	int height;
-	int advance;
-	std::shared_ptr<Texture> texture;
-};
-
 // -------------------- start Player --------------------
 
 glm::vec3 vectorProjection(glm::vec3 from, glm::vec3 to) {
@@ -70,7 +48,7 @@ struct Triangle {
 	glm::vec3 C;
 	glm::vec3 AB;
 	glm::vec3 AC;
-	glm::vec3  norm;
+	glm::vec3 norm;
 
 	Triangle(glm::vec3 a, glm::vec3 b, glm::vec3 c) {
 		this->A = a;
@@ -495,7 +473,7 @@ struct Skybox {
 
 	//BaseProject *baseProject;
 
-	void init(BaseProject *bp, DescriptorSetLayout *global);
+	void init(BaseProject *bp, DescriptorSetLayout *gubo_layout, DescriptorSetLayout *ubo_layout);
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, DescriptorSet& global);
 	void updateVkMemory(VkDevice device, uint32_t currentImage, void *data);
 	void cleanup();
@@ -534,24 +512,17 @@ void Skybox::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentIma
 	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 }
 
-void Skybox::init(BaseProject *bp, DescriptorSetLayout *global) {
-	//baseProject = bp;
-
-	DSL.init(bp, {
-		{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
-		{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
-	});
-
-	pipeline.init(bp, "shaders/skyboxVert.spv", "shaders/skyboxFrag.spv", { global, &DSL });
+void Skybox::init(BaseProject *bp, DescriptorSetLayout *gubo_layout, DescriptorSetLayout *ubo_layout) {
+	pipeline.init(bp, "shaders/skyboxVert.spv", "shaders/skyboxFrag.spv", { gubo_layout, ubo_layout });
 	model.init(bp, MODEL_PATH + "skybox_cube.obj");
 	texture.init(bp, TEXTURE_PATH + "skybox.png");
 
 	DS.init(bp, &DSL, {
 		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
 		{1, TEXTURE, 0, &texture}
-		});
+	});
 
-	ubo.model = glm::scale(glm::mat4(1.0f), glm::vec3(50, 50, 50));
+	this->ubo.model = glm::scale(glm::mat4(1.0f), glm::vec3(50, 50, 50));
 }
 
 // -------------------- end Skybox --------------------
@@ -571,9 +542,8 @@ class MyProject : public BaseProject {
 	float ROT_SPEED = glm::radians(100.0f); //rotation speed of the camera
 
 	// Descriptor Layouts [what will be passed to the shaders]
-	DescriptorSetLayout DSL_global;
-	DescriptorSetLayout DSL_museum; //Object descriptor
-	DescriptorSetLayout DSL_skybox;
+	DescriptorSetLayout DSL_gubo;
+	DescriptorSetLayout DSL_ubo;
 
 	// Pipelines
 	Pipeline museumPipeline;
@@ -602,15 +572,10 @@ class MyProject : public BaseProject {
 
 	// Here you load and setup all your Vulkan objects
 	void localInit() {
-		
-		// setting things for glfw
-		//double halfw = windowWidth * 1.0 / 2;
-		//double halfh = windowHeight * 1.0 / 2;
-		//glfwGetCursorPos(window, &halfw, &halfh);
 		glm::mat4 temp = glm::mat4(1.0f);
 
 		// Descriptor Layouts [what will be passed to the shaders]
-		DSL_museum.init(this, {
+		DSL_ubo.init(this, {
 					// this array contains the binding:
 					// first  element : the binding number
 					// second element : the time of element (buffer or texture)
@@ -619,48 +584,48 @@ class MyProject : public BaseProject {
 					{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
 				  });
 
-		DSL_global.init(this, {
+		DSL_gubo.init(this, {
 			{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS},
 			});
 
 		// Pipelines [Shader couples]
 		// The last array, is a vector of pointer to the layouts of the sets that will
 		// be used in this pipeline. The first element will be set 0, and so on..
-		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_global, &DSL_museum});
+		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_gubo, &DSL_ubo});
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
 
-		Museum.init(&DSL_museum, this, MODEL_PATH + "museumTri.obj", TEXTURE_PATH + "wall.jpg", temp);
+		Museum.init(&DSL_ubo, this, MODEL_PATH + "museumTri.obj", TEXTURE_PATH + "wall.jpg", temp);
 		
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
 
-		Floor.init(&DSL_museum, this, MODEL_PATH + "Floor.obj", TEXTURE_PATH + "Floor.jpg", temp);
+		Floor.init(&DSL_ubo, this, MODEL_PATH + "Floor.obj", TEXTURE_PATH + "Floor.jpg", temp);
 		
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(2.8f, -6.47f, -1.7f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(0.28f, 0.25f, 0.28f));
 
-		Island.init(&DSL_museum, this, MODEL_PATH + "Floating_Platform.obj", TEXTURE_PATH + "Floating_Platform.png", temp);
+		Island.init(&DSL_ubo, this, MODEL_PATH + "Floating_Platform.obj", TEXTURE_PATH + "Floating_Platform.png", temp);
 
 		std::ifstream f_artworks("config/artworks.json");
 		nlohmann::json j_artworks;
 		f_artworks >> j_artworks;
 
 		for (auto& artwork : j_artworks["pictures"].get<std::vector<Artwork>>()) {
-			artwork.init(&DSL_museum, this);
+			artwork.init(&DSL_ubo, this);
 			artworks.push_front(artwork);
 		}
 
 		for (auto& artwork : j_artworks["statues"].get<std::vector<Artwork>>()) {
-			artwork.init(&DSL_museum, this);
+			artwork.init(&DSL_ubo, this);
 			artworks.push_front(artwork);
 		}
 
 		for (auto& sign : j_artworks["signs"].get<std::vector<Sign>>()) {
-			sign.init(&DSL_museum, this);
+			sign.init(&DSL_ubo, this);
 			signs.push_front(sign);
 		}
 
@@ -671,12 +636,11 @@ class MyProject : public BaseProject {
 					Museum.pco.worldMat * glm::vec4(Museum.model.vertices[Museum.model.indices[i + 2]].pos, 1.0f)
 				});
 		}
-		
 
 		//----Skybox---//
-		skybox.init(this, &DSL_global);
+		skybox.init(this, &DSL_gubo, &DSL_ubo);
 
-		DS_global.init(this, &DSL_global, {
+		DS_global.init(this, &DSL_gubo, {
 			{0, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
 		});
 
@@ -692,6 +656,7 @@ class MyProject : public BaseProject {
 
 	// Here you destroy all the objects you created!		
 	void localCleanup() {
+
 		Museum.cleanup();
 		Floor.cleanup();
 		Island.cleanup();
@@ -707,8 +672,8 @@ class MyProject : public BaseProject {
 		DS_global.cleanup();
 
 		museumPipeline.cleanup();
-		DSL_global.cleanup();
-		DSL_museum.cleanup();
+		DSL_gubo.cleanup();
+		DSL_ubo.cleanup();
 		skybox.cleanup();
 	}
 	
@@ -731,9 +696,6 @@ class MyProject : public BaseProject {
 		Floor.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Island.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 
-
-// --------------------------------------------
-
 // ---------- picture command buffer ----------
 
 		for (Artwork& pic : artworks) {
@@ -744,9 +706,8 @@ class MyProject : public BaseProject {
 			s.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		}
 
-		// ---------- statues command buffer ----------
+// --------------- skybox --------------------------
 
-		// skybox
 		skybox.populateCommandBuffer(commandBuffer, currentImage, DS_global);
 	}
 

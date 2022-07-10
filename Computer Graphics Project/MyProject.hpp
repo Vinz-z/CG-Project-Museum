@@ -267,7 +267,9 @@ struct DescriptorSet {
 
 // MAIN ! 
 class BaseProject {
+	friend class TextArea;
 	friend class Model;
+	friend class Model2D;
 	friend class Texture;
 	friend class Pipeline;
 	friend class DescriptorSetLayout;
@@ -1634,8 +1636,6 @@ void Texture::createTextureSampler() {
 	 	throw std::runtime_error("failed to create texture sampler!");
 	}
 }
-	
-
 
 void Texture::init(BaseProject *bp, std::string file) {
 	std::cout << file << std::endl;
@@ -1651,10 +1651,6 @@ void Texture::cleanup() {
 	vkDestroyImage(BP->device, textureImage, nullptr);
 	vkFreeMemory(BP->device, textureImageMemory, nullptr);
 }
-
-
-
-
 
 void Pipeline::init(BaseProject *bp, const std::string& VertShader, const std::string& FragShader,
 					std::vector<DescriptorSetLayout *> D) {
