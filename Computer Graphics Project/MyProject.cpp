@@ -20,6 +20,8 @@ struct GlobalUniformBufferObject {
 
 struct UniformBufferObject {
 	alignas(16) glm::mat4 model;
+	alignas(16) glm::mat4 view;
+	alignas(16) glm::mat4 proj;
 };
 
 struct Character {
@@ -560,13 +562,20 @@ class MyProject : public BaseProject {
 	DescriptorSetLayout DSL_global;
 	DescriptorSetLayout DSL_museum; //Object descriptor
 	DescriptorSetLayout DSL_skybox;
+	DescriptorSetLayout DSL_text;
 
 	// Pipelines
 	Pipeline museumPipeline;
+	Pipeline textPipeline;
 
 	Environment Museum;
 	Environment Floor;
 	Environment Island;
+
+	//Text
+	Model M_text;;
+	Texture T_text;
+	DescriptorSet DS_text;
 
 	DescriptorSet DS_global; // used for cam and light points
 
@@ -582,7 +591,7 @@ class MyProject : public BaseProject {
 		
 		// Descriptor pool sizes  !!!! -> ????? sono cazzo giusti ?????
 		uniformBlocksInPool = 2;
-		texturesInPool = 33;
+		texturesInPool = 33 + 1;
 		setsInPool = texturesInPool+10;
 	}
 
@@ -605,14 +614,28 @@ class MyProject : public BaseProject {
 					{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
 				  });
 
+		DSL_text.init(this, {
+					{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
+					{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
+			});
+
 		DSL_global.init(this, {
 			{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS},
 			});
+		
 
 		// Pipelines [Shader couples]
 		// The last array, is a vector of pointer to the layouts of the sets that will
 		// be used in this pipeline. The first element will be set 0, and so on..
 		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_global, &DSL_museum});
+		textPipeline.init(this, "shaders/textVert.spv", "shaders/textFrag.spv", {&DSL_global, &DSL_text});
+
+		M_text.init(this, MODEL_PATH + "planePicture.obj");
+		T_text.init(this, TEXTURE_PATH + "wall.jpg");
+		DS_text.init(this, &DSL_text, {
+			{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+			{1, TEXTURE, 0, &T_text}
+			});
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
@@ -682,6 +705,10 @@ class MyProject : public BaseProject {
 		Floor.cleanup();
 		Island.cleanup();
 
+		M_text.cleanup();
+		T_text.cleanup();
+		DS_text.cleanup();
+
 		for (Artwork& pic : artworks) {
 			pic.cleanup();
 		}
@@ -696,6 +723,9 @@ class MyProject : public BaseProject {
 		DSL_global.cleanup();
 		DSL_museum.cleanup();
 		skybox.cleanup();
+
+		DSL_text.cleanup();
+		textPipeline.cleanup();
 	}
 	
 	// Here it is the creation of the command buffer:
@@ -718,8 +748,6 @@ class MyProject : public BaseProject {
 		Island.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 
 
-// --------------------------------------------
-
 // ---------- picture command buffer ----------
 
 		for (Artwork& pic : artworks) {
@@ -734,6 +762,26 @@ class MyProject : public BaseProject {
 
 		// skybox
 		skybox.populateCommandBuffer(commandBuffer, currentImage, DS_global);
+
+		//Text
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			textPipeline.graphicsPipeline);
+
+		vkCmdBindDescriptorSets(commandBuffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			textPipeline.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
+			0, nullptr);
+
+		VkBuffer vertexBuffersT[] = { M_text.vertexBuffer };
+		VkDeviceSize offsetsT[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffersT, offsetsT);
+		vkCmdBindIndexBuffer(commandBuffer, M_text.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			textPipeline.pipelineLayout, 1, 1, &DS_text.descriptorSets[currentImage],
+			0, nullptr);
+
+		// draw the picture
+		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(M_text.indices.size()), 1, 0, 0, 0);
 	}
 
 	// Here is where you update the uniforms.
@@ -802,6 +850,8 @@ class MyProject : public BaseProject {
 
 		void* data;
 
+		
+
 		//Update the Camera
 		GlobalUniformBufferObject gubo{};
 		gubo.proj = player.camera.getProjectionMatrix();
@@ -823,6 +873,13 @@ class MyProject : public BaseProject {
 		vkMapMemory(device, DS_global.uniformBuffersMemory[0][currentImage], 0, sizeof(gubo), 0, &data);
 		memcpy(data, &gubo, sizeof(gubo));
 		vkUnmapMemory(device, DS_global.uniformBuffersMemory[0][currentImage]);
+
+		UniformBufferObject ubo{};
+
+		vkMapMemory(device, DS_text.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo), 0, &data);
+		memcpy(data, &ubo, sizeof(ubo));
+		vkUnmapMemory(device, DS_text.uniformBuffersMemory[0][currentImage]);
+		
 
 		// skybox -> ma se tanto � costante una volta che lo ho copiato non rimane li per sempre?
 		skybox.updateVkMemory(device, currentImage, data);
