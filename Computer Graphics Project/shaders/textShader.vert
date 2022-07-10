@@ -22,5 +22,5 @@ void main()
 {
     //fragTexCoord = inPosition;
 	fragTexCoord = inTexCoord;
-	gl_Position = gubo.view * gubo.proj * ubo.model * vec4(inPosition, 1.0);
+	gl_Position = vec4(inPosition.xy, 0.0, 1.0);
 }

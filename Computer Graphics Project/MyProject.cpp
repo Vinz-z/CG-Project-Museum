@@ -242,6 +242,8 @@ private:
 
 // -------------------- end Player --------------------
 
+
+
 struct Artwork : Clickable {
 	std::string title;
 	std::string textureName;
@@ -273,6 +275,7 @@ void from_json(const nlohmann::json& j, Artwork& o) {
 	j.at("scale").get_to(o.scale);
 	j.at("rotate").get_to(o.rotate);
 }
+
 
 void Artwork::loadClickArea(std::string file) {
 	tinyobj::attrib_t attrib;
@@ -607,6 +610,65 @@ void Skybox::init(BaseProject *bp, DescriptorSetLayout *global) {
 
 // -------------------- end Skybox --------------------
 
+struct Square {
+	Model2D model;
+	Texture texture;
+	DescriptorSet descSet;
+	std::vector<glm::vec3> ver;
+	std::vector<uint32_t> index;
+
+	void init(DescriptorSetLayout *DSL, BaseProject *bp, std::string textureString);
+
+	void drawSquare();
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+	void cleanup();
+};
+
+void Square::drawSquare() {
+	ver.clear();
+	index.clear();
+	ver.push_back({ -0.7f,-0.7f,0.0f }); index.push_back(0);
+	ver.push_back({ -0.7f,0.7f,0.0f }); index.push_back(1);
+	ver.push_back({ 0.7f,0.7f,0.0f }); index.push_back(2);
+
+	ver.push_back({ -0.7f,-0.7f,0.0f }); index.push_back(3);
+	ver.push_back({ 0.7f,-0.7f,0.0f }); index.push_back(4);
+	ver.push_back({ 0.7f,0.7f,0.0f }); index.push_back(5);
+}
+
+void Square::init(DescriptorSetLayout *DSL, BaseProject *bp, std::string textureString) {
+	ver.push_back({ 0.0f,0.0f,0.0f }); index.push_back(0);
+	model.init(bp, ver, index);
+	texture.init(bp, TEXTURE_PATH + textureString);
+	descSet.init(bp, DSL, {
+		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+		{1, TEXTURE, 0, &texture}
+		});
+}
+
+void Square::cleanup() {
+	descSet.cleanup();
+	texture.cleanup();
+	model.cleanup();
+}
+
+void Square::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
+	VkBuffer vertexBuffers[] = { model.vertexBuffer };
+	VkDeviceSize offsets[] = { 0 };
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
+		0, nullptr);
+
+	// draw the picture
+	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+}
+
+
+
+
+
 class MyProject : public BaseProject {
 	Player player;
 	std::list<Artwork> artworks;
@@ -626,6 +688,7 @@ class MyProject : public BaseProject {
 	DescriptorSetLayout DSL_global;
 	DescriptorSetLayout DSL_museum; //Object descriptor
 	DescriptorSetLayout DSL_skybox;
+
 	DescriptorSetLayout DSL_text;
 
 	// Pipelines
@@ -636,10 +699,11 @@ class MyProject : public BaseProject {
 	Environment Floor;
 	Environment Island;
 
-	//Text
-	Model M_text;;
-	Texture T_text;
-	DescriptorSet DS_text;
+	std::vector<glm::vec3> ver;
+	std::vector<uint32_t> index;
+
+	Square descBackground;
+
 
 	DescriptorSet DS_global; // used for cam and light points
 
@@ -655,12 +719,14 @@ class MyProject : public BaseProject {
 		
 		// Descriptor pool sizes  !!!! -> ????? sono cazzo giusti ?????
 		uniformBlocksInPool = 2;
-		texturesInPool = 34;
+		texturesInPool = 34 + 1;
 		setsInPool = texturesInPool+10+6;
 	}
 
 	// Here you load and setup all your Vulkan objects
 	void localInit() {
+
+		
 		
 		// setting things for glfw
 		//double halfw = windowWidth * 1.0 / 2;
@@ -694,12 +760,9 @@ class MyProject : public BaseProject {
 		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_global, &DSL_museum});
 		textPipeline.init(this, "shaders/textVert.spv", "shaders/textFrag.spv", {&DSL_global, &DSL_text});
 
-		M_text.init(this, MODEL_PATH + "planePicture.obj");
-		T_text.init(this, TEXTURE_PATH + "wall.jpg");
-		DS_text.init(this, &DSL_text, {
-			{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-			{1, TEXTURE, 0, &T_text}
-			});
+
+		descBackground.init(&DSL_text, this, "wall.jpg");
+		
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
@@ -774,9 +837,7 @@ class MyProject : public BaseProject {
 		Floor.cleanup();
 		Island.cleanup();
 
-		M_text.cleanup();
-		T_text.cleanup();
-		DS_text.cleanup();
+		descBackground.cleanup();
 
 		for (Artwork& pic : artworks) {
 			pic.cleanup();
@@ -849,16 +910,7 @@ class MyProject : public BaseProject {
 			textPipeline.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
 			0, nullptr);
 
-		VkBuffer vertexBuffersT[] = { M_text.vertexBuffer };
-		VkDeviceSize offsetsT[] = { 0 };
-		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffersT, offsetsT);
-		vkCmdBindIndexBuffer(commandBuffer, M_text.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			textPipeline.pipelineLayout, 1, 1, &DS_text.descriptorSets[currentImage],
-			0, nullptr);
-
-		// draw the picture
-		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(M_text.indices.size()), 1, 0, 0, 0);
+		descBackground.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
 	}
 
 	// Here is where you update the uniforms.
@@ -950,12 +1002,6 @@ class MyProject : public BaseProject {
 		vkMapMemory(device, DS_global.uniformBuffersMemory[0][currentImage], 0, sizeof(gubo), 0, &data);
 		memcpy(data, &gubo, sizeof(gubo));
 		vkUnmapMemory(device, DS_global.uniformBuffersMemory[0][currentImage]);
-
-		UniformBufferObject ubo{};
-
-		vkMapMemory(device, DS_text.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo), 0, &data);
-		memcpy(data, &ubo, sizeof(ubo));
-		vkUnmapMemory(device, DS_text.uniformBuffersMemory[0][currentImage]);
 		
 
 		// skybox -> ma se tanto � costante una volta che lo ho copiato non rimane li per sempre?

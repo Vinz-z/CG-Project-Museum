@@ -198,6 +198,25 @@ struct Model {
 	void cleanup();
 };
 
+struct Model2D {
+	BaseProject *BP;
+	std::vector<Vertex> vertices;
+	std::vector<uint32_t> indices;
+
+	VkBuffer vertexBuffer;
+	VkDeviceMemory vertexBufferMemory;
+	VkBuffer indexBuffer;
+	VkDeviceMemory indexBufferMemory;
+
+	void init(BaseProject *bp,std::vector<glm::vec3> verts, std::vector<uint32_t> indices);
+	void createIndexBuffer();
+	void createVertexBuffer();
+	void cleanup();
+
+};
+
+
+
 struct Texture {
 	BaseProject *BP;
 	uint32_t mipLevels;
@@ -268,6 +287,7 @@ struct DescriptorSet {
 // MAIN ! 
 class BaseProject {
 	friend class Model;
+	friend class Model2D;
 	friend class Texture;
 	friend class Pipeline;
 	friend class DescriptorSetLayout;
@@ -1470,6 +1490,8 @@ protected:
     }
 };
 
+
+
 void Model::loadModel(std::string file) {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
@@ -1552,6 +1574,54 @@ void Model::cleanup() {
 	vkDestroyBuffer(BP->device, vertexBuffer, nullptr);
    	vkFreeMemory(BP->device, vertexBufferMemory, nullptr);
 }
+
+void Model2D::init(BaseProject *bp, std::vector<glm::vec3> verts, std::vector<uint32_t> indices) {
+	vertices.resize(verts.size());
+	std::transform(verts.begin(), verts.end(), vertices.begin(), [](glm::vec3 vertex) {
+		return Vertex{ vertex, glm::vec3(0,0,1), glm::vec2(0,0) };
+	});
+	this->indices = indices;
+	this->BP = bp;
+	createVertexBuffer();
+	createIndexBuffer();
+}
+
+void Model2D::createVertexBuffer() {
+	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+
+	BP->createBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		vertexBuffer, vertexBufferMemory);
+
+	void* data;
+	vkMapMemory(BP->device, vertexBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, vertices.data(), (size_t)bufferSize);
+	vkUnmapMemory(BP->device, vertexBufferMemory);
+}
+
+void Model2D::createIndexBuffer() {
+	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+	BP->createBuffer(bufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		indexBuffer, indexBufferMemory);
+
+	void* data;
+	vkMapMemory(BP->device, indexBufferMemory, 0, bufferSize, 0, &data);
+	memcpy(data, indices.data(), (size_t)bufferSize);
+	vkUnmapMemory(BP->device, indexBufferMemory);
+}
+
+void Model2D::cleanup() {
+	vkDestroyBuffer(BP->device, indexBuffer, nullptr);
+	vkFreeMemory(BP->device, indexBufferMemory, nullptr);
+	vkDestroyBuffer(BP->device, vertexBuffer, nullptr);
+	vkFreeMemory(BP->device, vertexBufferMemory, nullptr);
+}
+
+
 
 void Texture::createTextureImage(std::string file) {
 	int texWidth, texHeight, texChannels;
