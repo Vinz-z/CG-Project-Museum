@@ -532,7 +532,7 @@ void Skybox::init(BaseProject *bp, DescriptorSetLayout *global) {
 
 	pipeline.init(bp, "shaders/skyboxVert.spv", "shaders/skyboxFrag.spv", { global, &DSL });
 	model.init(bp, MODEL_PATH + "skybox_cube.obj");
-	texture.init(bp, TEXTURE_PATH + "skybox toon.jpg");
+	texture.init(bp, TEXTURE_PATH + "skybox toon.png");
 
 	DS.init(bp, &DSL, {
 		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
@@ -865,8 +865,8 @@ class MyProject : public BaseProject {
 		gubo.lightPos[6] = glm::vec3(5.0f, 2.0f, 3.7f);
 		gubo.lightPos[7] = glm::vec3(5.0f, 2.0f, -1.0f);
 		gubo.lightColor = glm::vec3(1.0f, 1.0f, 1.0f);
-		gubo.sunLightDir = glm::vec3(cos(glm::radians(time * 10)), sin(glm::radians(time * 10)), 0.0f); //sun (direct) light
-		gubo.sunLightColor = glm::vec3(0.99f,0.9f,0.44f) * glm::clamp(sin(glm::radians(time * 10)), 0.0f, 1.0f);
+		gubo.sunLightDir = glm::vec3(cos(glm::radians(time * 5)), sin(glm::radians(time * 5)), 0.0f); //sun (direct) light
+		gubo.sunLightColor = glm::vec3(0.99f,0.9f,0.44f) * glm::clamp(sin(glm::radians(time * 5)), 0.0f, 1.0f);
 		gubo.coneInOutDecayExp = glm::vec2(0.5f, 1.5f);
 
 		// gubo
