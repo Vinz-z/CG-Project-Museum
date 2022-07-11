@@ -612,12 +612,63 @@ struct Skybox {
 		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 	}
 
-	void updateVkMemory(VkDevice device, uint32_t currentImage) {
-		void *data;
-		vkMapMemory(device, DS.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo), 0, &data);
-		memcpy(data, &ubo, sizeof(ubo));
-		vkUnmapMemory(device, DS.uniformBuffersMemory[0][currentImage]);
-	}
+void Skybox::init(BaseProject *bp, DescriptorSetLayout *global) {
+	//baseProject = bp;
+
+	DSL.init(bp, {
+		{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
+		{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
+	});
+
+	pipeline.init(bp, "shaders/skyboxVert.spv", "shaders/skyboxFrag.spv", { global, &DSL });
+	model.init(bp, MODEL_PATH + "skybox_cube.obj");
+	texture.init(bp, TEXTURE_PATH + "skybox toon.png");
+
+	DS.init(bp, &DSL, {
+		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+		{1, TEXTURE, 0, &texture}
+		});
+
+	ubo.model = glm::scale(glm::mat4(1.0f), glm::vec3(100, 100, 100));
+}
+
+// -------------------- end Skybox --------------------
+
+struct Square {
+	Model2D model;
+	Texture texture;
+	DescriptorSet descSet;
+	std::vector<glm::vec3> ver;
+	std::vector<uint32_t> index;
+
+	void init(DescriptorSetLayout *DSL, BaseProject *bp, std::string textureString);
+
+	void drawSquare();
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+	void cleanup();
+};
+
+void Square::drawSquare() {
+	ver.clear();
+	index.clear();
+	ver.push_back({ -0.7f,-0.7f,0.0f }); index.push_back(0);
+	ver.push_back({ -0.7f,0.7f,0.0f }); index.push_back(1);
+	ver.push_back({ 0.7f,0.7f,0.0f }); index.push_back(2);
+
+	ver.push_back({ -0.7f,-0.7f,0.0f }); index.push_back(3);
+	ver.push_back({ 0.7f,-0.7f,0.0f }); index.push_back(4);
+	ver.push_back({ 0.7f,0.7f,0.0f }); index.push_back(5);
+}
+
+void Square::init(DescriptorSetLayout *DSL, BaseProject *bp, std::string textureString) {
+	ver.push_back({ 0.0f,0.0f,0.0f }); index.push_back(0);
+	model.init(bp, ver, index);
+	texture.init(bp, TEXTURE_PATH + textureString);
+	descSet.init(bp, DSL, {
+		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+		{1, TEXTURE, 0, &texture}
+		});
+}
 
 	void cleanup() {
 		DS.cleanup();
@@ -656,6 +707,14 @@ class MyProject : public BaseProject {
 	Environment Floor;
 	Environment Island;
 
+	std::vector<glm::vec3> ver;
+	std::vector<uint32_t> index;
+
+	Square descBackground;
+
+
+	DescriptorSet DS_global; // used for cam and light points
+
 	Skybox skybox;
 	
 	// Here you set the main application parameters
@@ -667,9 +726,9 @@ class MyProject : public BaseProject {
 		initialBackgroundColor = {0.0f, 0.0f, 0.0f, 1.0f};
 		
 		// Descriptor pool sizes  !!!! -> ????? sono cazzo giusti ?????
-		uniformBlocksInPool = 100;
-		texturesInPool = 100;// 18 * 2 + 4 * 2 + 16 + 1 + 2 + 1 + 6;
-		setsInPool = 100; //  2 * texturesInPool;
+		uniformBlocksInPool = 2;
+		texturesInPool = 34 + 1;
+		setsInPool = texturesInPool+10+6;
 	}
 
 	// Here you load and setup all your Vulkan objects
@@ -698,8 +757,12 @@ class MyProject : public BaseProject {
 		// Pipelines [Shader couples]
 		// The last array, is a vector of pointer to the layouts of the sets that will
 		// be used in this pipeline. The first element will be set 0, and so on..
-		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_gubo, &DSL_ubo});
-		textPipeline.init(this, "shaders/textVert.spv", "shaders/textFrag.spv", {&DSL_ubo});
+		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_global, &DSL_museum});
+		textPipeline.init(this, "shaders/textVert.spv", "shaders/textFrag.spv", {&DSL_global, &DSL_text});
+
+
+		descBackground.init(&DSL_text, this, "wall.jpg");
+		
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
@@ -822,8 +885,7 @@ class MyProject : public BaseProject {
 
 		skybox.populateCommandBuffer(commandBuffer, currentImage, DS_global);
 
-// -------------- descriptions ---------------------------
-
+		//Text
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 			textPipeline.graphicsPipeline);
 
@@ -831,6 +893,7 @@ class MyProject : public BaseProject {
 			piece.descriptionSquare.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
 		}
 
+		descBackground.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
 	}
 
 	// Here is where you update the uniforms.
