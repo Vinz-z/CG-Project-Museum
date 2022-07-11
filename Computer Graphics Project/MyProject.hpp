@@ -208,7 +208,7 @@ struct Model2D {
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
-	void init(BaseProject *bp,std::vector<glm::vec3> verts, std::vector<uint32_t> indices);
+	void init(BaseProject *bp, std::vector<Vertex> verts, std::vector<uint32_t> indices);
 	void createIndexBuffer();
 	void createVertexBuffer();
 	void cleanup();
@@ -1575,11 +1575,8 @@ void Model::cleanup() {
    	vkFreeMemory(BP->device, vertexBufferMemory, nullptr);
 }
 
-void Model2D::init(BaseProject *bp, std::vector<glm::vec3> verts, std::vector<uint32_t> indices) {
-	vertices.resize(verts.size());
-	std::transform(verts.begin(), verts.end(), vertices.begin(), [](glm::vec3 vertex) {
-		return Vertex{ vertex, glm::vec3(0,0,1), glm::vec2(0,0) };
-	});
+void Model2D::init(BaseProject *bp, std::vector<Vertex> verts, std::vector<uint32_t> indices) {
+	this->vertices = verts;
 	this->indices = indices;
 	this->BP = bp;
 	createVertexBuffer();

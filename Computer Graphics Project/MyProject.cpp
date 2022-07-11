@@ -614,30 +614,25 @@ struct Square {
 	Model2D model;
 	Texture texture;
 	DescriptorSet descSet;
-	std::vector<glm::vec3> ver;
+	std::vector<Vertex> ver;
 	std::vector<uint32_t> index;
 
 	void init(DescriptorSetLayout *DSL, BaseProject *bp, std::string textureString);
-
-	void drawSquare();
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
 	void cleanup();
 };
 
-void Square::drawSquare() {
-	ver.clear();
-	index.clear();
-	ver.push_back({ -0.7f,-0.7f,0.0f }); index.push_back(0);
-	ver.push_back({ -0.7f,0.7f,0.0f }); index.push_back(1);
-	ver.push_back({ 0.7f,0.7f,0.0f }); index.push_back(2);
-
-	ver.push_back({ -0.7f,-0.7f,0.0f }); index.push_back(3);
-	ver.push_back({ 0.7f,-0.7f,0.0f }); index.push_back(4);
-	ver.push_back({ 0.7f,0.7f,0.0f }); index.push_back(5);
-}
 
 void Square::init(DescriptorSetLayout *DSL, BaseProject *bp, std::string textureString) {
-	ver.push_back({ 0.0f,0.0f,0.0f }); index.push_back(0);
+	int i = 0;
+	ver.push_back(Vertex{ {-0.9f, -0.9f, 0.0f}, {0, 0, 1}, {1, 1} }); index.push_back(i++);
+	ver.push_back(Vertex{ {0.9f, -0.9f, 0.0f}, {0, 0, 1}, {0, 1} }); index.push_back(i++);
+	ver.push_back(Vertex{ {-0.9f, 0.9f, 0.0f}, {0, 0, 1}, {1, 0} }); index.push_back(i++);
+
+	ver.push_back(Vertex{ {0.9f, -0.9f, 0.0f}, {0, 0, 1}, {0, 1} }); index.push_back(i++);
+	ver.push_back(Vertex{ {0.9f, 0.9f, 0.0f}, {0, 0, 1}, {0,0} }); index.push_back(i++);
+	ver.push_back(Vertex{ {-0.9f, 0.9f, 0.0f}, {0, 0, 1}, {1, 0} }); index.push_back(i++);
+
 	model.init(bp, ver, index);
 	texture.init(bp, TEXTURE_PATH + textureString);
 	descSet.init(bp, DSL, {
@@ -699,9 +694,6 @@ class MyProject : public BaseProject {
 	Environment Floor;
 	Environment Island;
 
-	std::vector<glm::vec3> ver;
-	std::vector<uint32_t> index;
-
 	Square descBackground;
 
 
@@ -718,9 +710,14 @@ class MyProject : public BaseProject {
 		initialBackgroundColor = {0.0f, 0.0f, 0.0f, 1.0f};
 		
 		// Descriptor pool sizes  !!!! -> ????? sono cazzo giusti ?????
+		/*
 		uniformBlocksInPool = 2;
 		texturesInPool = 34 + 1;
 		setsInPool = texturesInPool+10+6;
+		*/
+		texturesInPool = 48 + 1;
+		uniformBlocksInPool = texturesInPool + 1;
+		setsInPool = texturesInPool + 2;
 	}
 
 	// Here you load and setup all your Vulkan objects
@@ -761,7 +758,7 @@ class MyProject : public BaseProject {
 		textPipeline.init(this, "shaders/textVert.spv", "shaders/textFrag.spv", {&DSL_global, &DSL_text});
 
 
-		descBackground.init(&DSL_text, this, "wall.jpg");
+		descBackground.init(&DSL_text, this, "descriptions/BlueHorses.png");
 		
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
@@ -901,6 +898,7 @@ class MyProject : public BaseProject {
 		// skybox
 		skybox.populateCommandBuffer(commandBuffer, currentImage, DS_global);
 
+		
 		//Text
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 			textPipeline.graphicsPipeline);
@@ -911,6 +909,7 @@ class MyProject : public BaseProject {
 			0, nullptr);
 
 		descBackground.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
+		
 	}
 
 	// Here is where you update the uniforms.
