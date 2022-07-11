@@ -208,14 +208,12 @@ struct Model2D {
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
-	void init(BaseProject *bp, std::vector<Vertex> verts, std::vector<uint32_t> indices);
+	void init(BaseProject *bp,std::vector<Vertex> verts, std::vector<uint32_t> indices);
 	void createIndexBuffer();
 	void createVertexBuffer();
 	void cleanup();
 
 };
-
-
 
 struct Texture {
 	BaseProject *BP;
@@ -286,6 +284,7 @@ struct DescriptorSet {
 
 // MAIN ! 
 class BaseProject {
+	friend class TextArea;
 	friend class Model;
 	friend class Model2D;
 	friend class Texture;
@@ -1009,10 +1008,8 @@ protected:
 		VkMemoryAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits,
-											properties);
-		if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) !=
-								VK_SUCCESS) {
+		allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+		if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
 			throw std::runtime_error("failed to allocate image memory!");
 		}
 
@@ -1579,6 +1576,7 @@ void Model2D::init(BaseProject *bp, std::vector<Vertex> verts, std::vector<uint3
 	this->vertices = verts;
 	this->indices = indices;
 	this->BP = bp;
+
 	createVertexBuffer();
 	createIndexBuffer();
 }
@@ -1622,36 +1620,38 @@ void Model2D::cleanup() {
 
 void Texture::createTextureImage(std::string file) {
 	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load(file.c_str(), &texWidth, &texHeight,
-						&texChannels, STBI_rgb_alpha);
+	stbi_uc* pixels = stbi_load(file.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	
 	if (!pixels) {
+		std::cout << stbi_failure_reason() << std::endl;
 		throw std::runtime_error("failed to load texture image!");
 	}
 
 	VkDeviceSize imageSize = texWidth * texHeight * 4;
-	mipLevels = static_cast<uint32_t>(std::floor(
-					std::log2(std::max(texWidth, texHeight)))) + 1;
+	mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 	
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
-	 
+
 	BP->createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 	  						VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
 	  						VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 	  						stagingBuffer, stagingBufferMemory);
+
 	void* data;
 	vkMapMemory(BP->device, stagingBufferMemory, 0, imageSize, 0, &data);
 	memcpy(data, pixels, static_cast<size_t>(imageSize));
 	vkUnmapMemory(BP->device, stagingBufferMemory);
 	
 	stbi_image_free(pixels);
-	
+
+	std::cout << "1 " << file << std::endl;
 	BP->createImage(texWidth, texHeight, mipLevels, VK_FORMAT_R8G8B8A8_SRGB,
 				VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 				VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage,
 				textureImageMemory);
-				
+
 	BP->transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB,
 			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
 	BP->copyBufferToImage(stagingBuffer, textureImage,
@@ -1701,11 +1701,8 @@ void Texture::createTextureSampler() {
 	 	throw std::runtime_error("failed to create texture sampler!");
 	}
 }
-	
-
 
 void Texture::init(BaseProject *bp, std::string file) {
-	std::cout << file << std::endl;
 	BP = bp;
 	createTextureImage(file);
 	createTextureImageView();
@@ -1718,10 +1715,6 @@ void Texture::cleanup() {
 	vkDestroyImage(BP->device, textureImage, nullptr);
 	vkFreeMemory(BP->device, textureImageMemory, nullptr);
 }
-
-
-
-
 
 void Pipeline::init(BaseProject *bp, const std::string& VertShader, const std::string& FragShader,
 					std::vector<DescriptorSetLayout *> D) {
