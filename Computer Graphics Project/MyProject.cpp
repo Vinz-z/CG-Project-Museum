@@ -2,6 +2,8 @@
 #include <list>
 #include <json.hpp>
 
+#define LOG(x) std::cout << x << std::endl;
+
 
 const std::string MODEL_PATH = "models/";
 const std::string TEXTURE_PATH = "textures/";
@@ -19,9 +21,7 @@ struct GlobalUniformBufferObject {
 };
 
 struct UniformBufferObject {
-	alignas(16) glm::mat4 model;
-	alignas(16) glm::mat4 view;
-	alignas(16) glm::mat4 proj;
+	alignas(16) glm::mat4 worldMatrix;
 };
 
 // -------------------- start Player --------------------
@@ -88,28 +88,6 @@ struct Triangle {
 		printVec("C", C);
 		printVec("norm", norm);
 	}
-};
-
-struct Clickable {
-	virtual void handleClick() = 0;
-
-	void addTriangle(Triangle t) {
-		body.push_front(t);
-	}
-
-	bool isClicked(Ray ray) {
-		for (Triangle& t : body) {
-			auto intersection = t.lineIntersectInside(ray);
-			if (intersection) return glm::length(ray.origin - *intersection) < 1.5;
-		}
-
-		return false;
-
-	}
-
-private:
-	std::list<Triangle> body;
-
 };
 
 struct Camera {
@@ -232,15 +210,82 @@ private:
 	}
 };
 
-// -------------------- end Player --------------------
+struct Square {
+	Model2D model;
+	Texture texture;
+	DescriptorSet descSet;
 
+	glm::mat4 hidden = glm::translate(glm::mat4(1), glm::vec3(0, 2, 0));//glm::translate(glm::mat4(1), glm::vec3(0, -1000, 0));
+	glm::mat4 visible = glm::mat4(1);
+	UniformBufferObject ubo;
 
+	void setVisible() {
+		LOG("visible")
+		ubo.worldMatrix = visible;
+	}
 
-struct Artwork : Clickable {
-	std::string title;
-	std::string textureName;
-	std::string modelName;
-	std::string description;
+	void setHidden() {
+		LOG("hidden")
+		ubo.worldMatrix = hidden;
+	}
+
+	void init(DescriptorSetLayout *DSL, BaseProject *bp, std::string textureString) {
+		std::vector<Vertex> ver;
+		std::vector<uint32_t> index;
+
+		ver.push_back(Vertex{ {-0.9f, -0.9f, 0.0f}, {0, 0, 1}, {1, 0} }); index.push_back(0);
+		ver.push_back(Vertex{ {0.9f, -0.9f, 0.0f}, {0, 0, 1}, {1, 1} }); index.push_back(1);
+		ver.push_back(Vertex{ {-0.9f, 0.9f, 0.0f}, {0, 0, 1}, {0, 0} }); index.push_back(2);
+
+		ver.push_back(Vertex{ {0.9f, -0.9f, 0.0f}, {0, 0, 1}, {1, 1} }); index.push_back(3);
+		ver.push_back(Vertex{ {0.9f, 0.9f, 0.0f}, {0, 0, 1}, {0, 1} }); index.push_back(4);
+		ver.push_back(Vertex{ {-0.9f, 0.9f, 0.0f}, {0, 0, 1}, {0, 0} }); index.push_back(5);
+
+		model.init(bp, ver, index);
+		texture.init(bp, TEXTURE_PATH + textureString);
+		descSet.init(bp, DSL, {
+			{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+			{1, TEXTURE, 0, &texture}
+		});
+
+		ubo.worldMatrix = hidden;
+	}
+
+	void cleanup() {
+		descSet.cleanup();
+		texture.cleanup();
+		model.cleanup();
+	}
+
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
+		VkBuffer vertexBuffers[] = { model.vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipeline.pipelineLayout, 0, 1, &descSet.descriptorSets[currentImage],
+			0, nullptr
+		);
+
+		// draw the picture
+		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+	}
+
+	void updateUbo(int currentImage, VkDevice device) {
+		void* data;
+		vkMapMemory(device, descSet.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo), 0, &data);
+		memcpy(data, &ubo, sizeof(ubo));
+		vkUnmapMemory(device, descSet.uniformBuffersMemory[0][currentImage]);
+	}
+};
+
+struct Artwork {
+	std::string textureName; // texture
+	std::string modelName; // model
+	std::string collisionModel; // clickable area
+	std::string descrTextureName; // description image
+
 	std::vector<float> translate;
 	std::vector<float> rotate;
 	std::vector<float> scale;
@@ -248,106 +293,111 @@ struct Artwork : Clickable {
 	Model model;
 	Texture texture;
 	DescriptorSet descSet;
-
+	Square descriptionSquare;
 	PushConstantObject pco;
 
-	void cleanup();
-	void init(DescriptorSetLayout *DSL, BaseProject *bs);
-	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
-	void loadClickArea(std::string file);
-	void handleClick();
-};
+	bool descriptionVisible = false;
 
-void from_json(const nlohmann::json& j, Artwork& o) {
-	j.at("title").get_to(o.title);
-	j.at("src").get_to(o.textureName);
-	j.at("model").get_to(o.modelName);
-	j.at("description").get_to(o.description);
-	j.at("translate").get_to(o.translate);
-	j.at("scale").get_to(o.scale);
-	j.at("rotate").get_to(o.rotate);
-}
+	void init(DescriptorSetLayout *ubo_dsl, BaseProject *bp) {
+		model.init(bp, MODEL_PATH + modelName);
+		texture.init(bp, TEXTURE_PATH + textureName);
+		descSet.init(bp, ubo_dsl, {
+			{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+			{1, TEXTURE, 0, &texture}
+			});
 
+		pco.worldMat = glm::translate(glm::mat4(1), { translate[0], translate[1], translate[2] }) *
+			glm::rotate(glm::mat4(1), glm::radians(rotate[1]), glm::vec3(0, 1, 0)) *
+			glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
+			glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
+			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
 
-void Artwork::loadClickArea(std::string file) {
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
-	std::string warn, err;
-
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err,
-		file.c_str())) {
-		throw std::runtime_error(warn + err);
+		loadClickArea(MODEL_PATH + collisionModel);
+		descriptionSquare.init(ubo_dsl, bp, descrTextureName);
 	}
 
-	for (const auto& shape : shapes) {
-		for (int i = 0; i < shape.mesh.indices.size(); i += 3) {
-			addTriangle(Triangle{
-					pco.worldMat * glm::vec4(
-						attrib.vertices[3 * shape.mesh.indices[i].vertex_index + 0],
-						attrib.vertices[3 * shape.mesh.indices[i].vertex_index + 1],
-						attrib.vertices[3 * shape.mesh.indices[i].vertex_index + 2], 1.0f),
-					pco.worldMat * glm::vec4(
-						attrib.vertices[3 * shape.mesh.indices[i + 1].vertex_index + 0],
-						attrib.vertices[3 * shape.mesh.indices[i + 1].vertex_index + 1],
-						attrib.vertices[3 * shape.mesh.indices[i + 1].vertex_index + 2], 1.0f),
-					pco.worldMat * glm::vec4(
-						attrib.vertices[3 * shape.mesh.indices[i + 2].vertex_index + 0],
-						attrib.vertices[3 * shape.mesh.indices[i + 2].vertex_index + 1],
-						attrib.vertices[3 * shape.mesh.indices[i + 2].vertex_index + 2], 1.0f),
-				});
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
+		VkBuffer vertexBuffers[] = { model.vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
+			0, nullptr);
+
+		// push constant before drawing the picture
+		vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+			0, sizeof(PushConstantObject), &pco
+		);
+
+		// draw the picture
+		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+	}
+
+	void cleanup() {
+		descSet.cleanup();
+		texture.cleanup();
+		model.cleanup();
+	}
+
+	void loadClickArea(std::string file) {
+		tinyobj::attrib_t attrib;
+		std::vector<tinyobj::shape_t> shapes;
+		std::vector<tinyobj::material_t> materials;
+		std::string warn, err;
+
+		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err,
+			file.c_str())) {
+			throw std::runtime_error(warn + err);
+		}
+
+		for (const auto& shape : shapes) {
+			for (int i = 0; i < shape.mesh.indices.size(); i += 3) {
+				addTriangle(Triangle{
+						pco.worldMat * glm::vec4(
+							attrib.vertices[3 * shape.mesh.indices[i].vertex_index + 0],
+							attrib.vertices[3 * shape.mesh.indices[i].vertex_index + 1],
+							attrib.vertices[3 * shape.mesh.indices[i].vertex_index + 2], 1.0f),
+						pco.worldMat * glm::vec4(
+							attrib.vertices[3 * shape.mesh.indices[i + 1].vertex_index + 0],
+							attrib.vertices[3 * shape.mesh.indices[i + 1].vertex_index + 1],
+							attrib.vertices[3 * shape.mesh.indices[i + 1].vertex_index + 2], 1.0f),
+						pco.worldMat * glm::vec4(
+							attrib.vertices[3 * shape.mesh.indices[i + 2].vertex_index + 0],
+							attrib.vertices[3 * shape.mesh.indices[i + 2].vertex_index + 1],
+							attrib.vertices[3 * shape.mesh.indices[i + 2].vertex_index + 2], 1.0f),
+					});
+			}
 		}
 	}
-}
 
-void Artwork::handleClick() {
-	std::cout << "----------- click ------------" << std::endl;
-	std::cout << title << std::endl;
-	std::cout << "------------------------------" << std::endl;
-	std::cout << description << std::endl;
-	std::cout << "-----------   x   ------------" << std::endl;
-}
+	void handleClick() {
+		std::cout << textureName << std::endl;
+		descriptionSquare.setVisible();
+	}
 
-void Artwork::cleanup(){
-	descSet.cleanup();
-	texture.cleanup();
-	model.cleanup();
-}
+	void hideDescription() {
+		descriptionSquare.setHidden();
+	}
 
-void Artwork::init(DescriptorSetLayout *DSL, BaseProject *bs) {
-	model.init(bs, MODEL_PATH + modelName);
-	texture.init(bs, TEXTURE_PATH + textureName);
-	descSet.init(bs, DSL, {
-		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-		{1, TEXTURE, 0, &texture}
-	});
+	void addTriangle(Triangle t) {
+		body.push_front(t);
+	}
 
-	pco.worldMat = glm::translate(glm::mat4(1), { translate[0], translate[1], translate[2] }) *
-		glm::rotate(glm::mat4(1), glm::radians(rotate[1]), glm::vec3(0, 1, 0)) *
-		glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
-		glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
-		glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
+	bool isClicked(Ray ray) {
+		for (Triangle& t : body) {
+			auto intersection = t.lineIntersectInside(ray);
+			if (intersection) return glm::length(ray.origin - *intersection) < 1.5;
+		}
 
-	loadClickArea(MODEL_PATH + "planePicture.obj");
-}
+		return false;
 
-void Artwork::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
-	VkBuffer vertexBuffers[] = { model.vertexBuffer };
-	VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, 
-		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage], 
-		0, nullptr);
+	}
 
-	// push constant before drawing the picture
-	vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-		0, sizeof(PushConstantObject), &pco
-	);
-
-	// draw the picture
-	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
-}
+private:
+	std::list<Triangle> body;
+};
 
 struct Sofa {
 	std::string textureName;
@@ -361,56 +411,45 @@ struct Sofa {
 
 	PushConstantObject pco;
 
-	void cleanup();
-	void init(DescriptorSetLayout *DSL, BaseProject *bs);
-	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+	void init(DescriptorSetLayout *DSL, BaseProject *bs) {
+		model.init(bs, MODEL_PATH + "Ottoman.obj");
+		texture.init(bs, TEXTURE_PATH + textureName);
+		descSet.init(bs, DSL, {
+			{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+			{1, TEXTURE, 0, &texture}
+			});
+
+		pco.worldMat = glm::translate(glm::mat4(1), { translate[0], translate[1], translate[2] }) *
+			glm::rotate(glm::mat4(1), glm::radians(rotate[1]), glm::vec3(0, 1, 0)) *
+			glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
+			glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
+			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
+	}
+
+	void cleanup() {
+		descSet.cleanup();
+		texture.cleanup();
+		model.cleanup();
+	}
+
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
+		VkBuffer vertexBuffers[] = { model.vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
+			0, nullptr);
+
+		// push constant before drawing the picture
+		vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+			0, sizeof(PushConstantObject), &pco
+		);
+
+		// draw the picture
+		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+	}
 };
-
-void from_json(const nlohmann::json& j, Sofa& o) {
-	j.at("src").get_to(o.textureName);
-	j.at("translate").get_to(o.translate);
-	j.at("scale").get_to(o.scale);
-	j.at("rotate").get_to(o.rotate);
-}
-
-void Sofa::init(DescriptorSetLayout *DSL, BaseProject *bs) {
-	model.init(bs, MODEL_PATH + "Ottoman.obj");
-	texture.init(bs, TEXTURE_PATH + textureName);
-	descSet.init(bs, DSL, {
-		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-		{1, TEXTURE, 0, &texture}
-		});
-
-	pco.worldMat = glm::translate(glm::mat4(1), { translate[0], translate[1], translate[2] }) *
-		glm::rotate(glm::mat4(1), glm::radians(rotate[1]), glm::vec3(0, 1, 0)) *
-		glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
-		glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
-		glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
-}
-
-void Sofa::cleanup() {
-	descSet.cleanup();
-	texture.cleanup();
-	model.cleanup();
-}
-
-void Sofa::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
-	VkBuffer vertexBuffers[] = { model.vertexBuffer };
-	VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
-		0, nullptr);
-
-	// push constant before drawing the picture
-	vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-		0, sizeof(PushConstantObject), &pco
-	);
-
-	// draw the picture
-	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
-}
 
 struct Sign {
 	std::string textureName;
@@ -424,56 +463,45 @@ struct Sign {
 
 	PushConstantObject pco;
 
-	void cleanup();
-	void init(DescriptorSetLayout *DSL, BaseProject *bs);
-	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+	void cleanup() {
+		descSet.cleanup();
+		texture.cleanup();
+		model.cleanup();
+	}
+
+	void init(DescriptorSetLayout *DSL, BaseProject *bs) {
+		model.init(bs, MODEL_PATH + "Sign.obj");
+		texture.init(bs, TEXTURE_PATH + textureName);
+		descSet.init(bs, DSL, {
+			{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+			{1, TEXTURE, 0, &texture}
+			});
+
+		pco.worldMat = glm::translate(glm::mat4(1), { translate[0], translate[1], translate[2] }) *
+			glm::rotate(glm::mat4(1), glm::radians(rotate[1]), glm::vec3(0, 1, 0)) *
+			glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
+			glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
+			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
+	}
+
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
+		VkBuffer vertexBuffers[] = { model.vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
+			0, nullptr);
+
+		// push constant before drawing the picture
+		vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+			0, sizeof(PushConstantObject), &pco
+		);
+
+		// draw the picture
+		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+	}
 };
-
-void from_json(const nlohmann::json& j, Sign& o) {
-	j.at("src").get_to(o.textureName);
-	j.at("translate").get_to(o.translate);
-	j.at("scale").get_to(o.scale);
-	j.at("rotate").get_to(o.rotate);
-}
-
-void Sign::init(DescriptorSetLayout *DSL, BaseProject *bs) {
-	model.init(bs, MODEL_PATH + "Sign.obj");
-	texture.init(bs, TEXTURE_PATH + textureName);
-	descSet.init(bs, DSL, {
-		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-		{1, TEXTURE, 0, &texture}
-		});
-
-	pco.worldMat = glm::translate(glm::mat4(1), { translate[0], translate[1], translate[2] }) *
-		glm::rotate(glm::mat4(1), glm::radians(rotate[1]), glm::vec3(0, 1, 0)) *
-		glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
-		glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
-		glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
-}
-
-void Sign::cleanup() {
-	descSet.cleanup();
-	texture.cleanup();
-	model.cleanup();
-}
-
-void Sign::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
-	VkBuffer vertexBuffers[] = { model.vertexBuffer };
-	VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
-		0, nullptr);
-
-	// push constant before drawing the picture
-	vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-		0, sizeof(PushConstantObject), &pco
-	);
-
-	// draw the picture
-	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
-}
 
 struct Environment {
 	Model model;
@@ -482,53 +510,65 @@ struct Environment {
 
 	PushConstantObject pco;
 
-	void cleanup();
-	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position);
-	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
+	void cleanup() {
+		descSet.cleanup();
+		texture.cleanup();
+		model.cleanup();
+	}
+
+	void init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position) {
+		model.init(bs, modelString);
+		texture.init(bs, textureString);
+		descSet.init(bs, DSL, {
+			{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+			{1, TEXTURE, 0, &texture}
+			});
+		pco.worldMat = position;
+	}
+
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
+		VkBuffer vertexBuffers[] = { model.vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
+			0, nullptr);
+
+		// push constant before drawing the picture
+		vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+			0, sizeof(PushConstantObject), &pco
+		);
+
+		// draw the picture
+		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+	}
 };
 
-void Environment::cleanup() {
-	descSet.cleanup();
-	texture.cleanup();
-	model.cleanup();
+void from_json(const nlohmann::json& j, Artwork& o) {
+	j.at("src").get_to(o.textureName);
+	j.at("model").get_to(o.modelName);
+	j.at("clickArea").get_to(o.collisionModel);
+	j.at("description").get_to(o.descrTextureName);
+
+	j.at("translate").get_to(o.translate);
+	j.at("scale").get_to(o.scale);
+	j.at("rotate").get_to(o.rotate);
 }
 
-void Environment::init(DescriptorSetLayout *DSL, BaseProject *bs, std::string modelString, std::string textureString, glm::mat4 position) {
-	model.init(bs, modelString);
-	texture.init(bs, textureString);
-	descSet.init(bs, DSL, {
-		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-		{1, TEXTURE, 0, &texture}
-		});
-	pco.worldMat = position;
+void from_json(const nlohmann::json& j, Sign& o) {
+	j.at("src").get_to(o.textureName);
+	j.at("translate").get_to(o.translate);
+	j.at("scale").get_to(o.scale);
+	j.at("rotate").get_to(o.rotate);
 }
 
-void Environment::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
-	VkBuffer vertexBuffers[] = { model.vertexBuffer };
-	VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
-		0, nullptr);
-
-	// push constant before drawing the picture
-	vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-		0, sizeof(PushConstantObject), &pco
-	);
-
-	// draw the picture
-	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+void from_json(const nlohmann::json& j, Sofa& o) {
+	j.at("src").get_to(o.textureName);
+	j.at("translate").get_to(o.translate);
+	j.at("scale").get_to(o.scale);
+	j.at("rotate").get_to(o.rotate);
 }
-
-void copyInMemory(Artwork picture, int currentImage, UniformBufferObject ubo, void* data, VkDevice device) {
-	vkMapMemory(device, picture.descSet.uniformBuffersMemory[0][currentImage], 0,
-		sizeof(ubo), 0, &data);
-	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(device, picture.descSet.uniformBuffersMemory[0][currentImage]);
-};
-
-// -------------------- start Skybox --------------------
 
 struct Skybox {
 	Model model;
@@ -536,127 +576,61 @@ struct Skybox {
 	Pipeline pipeline;
 
 	DescriptorSet DS;
-	DescriptorSetLayout DSL;
 	UniformBufferObject ubo;
 
 	//BaseProject *baseProject;
 
-	void init(BaseProject *bp, DescriptorSetLayout *gubo_layout, DescriptorSetLayout *ubo_layout);
-	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, DescriptorSet& global);
-	void updateVkMemory(VkDevice device, uint32_t currentImage, void *data);
-	void cleanup();
+	void init(BaseProject *bp, DescriptorSetLayout *gubo_layout, DescriptorSetLayout *ubo_layout) {
+		pipeline.init(bp, "shaders/skyboxVert.spv", "shaders/skyboxFrag.spv", { gubo_layout, ubo_layout });
+		model.init(bp, MODEL_PATH + "skybox_cube.obj");
+		texture.init(bp, TEXTURE_PATH + "skybox toon.png");
+
+		DS.init(bp, ubo_layout, {
+			{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+			{1, TEXTURE, 0, &texture}
+			});
+
+		ubo.worldMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(100, 100, 100));
+	}
+
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, DescriptorSet& global) {
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.graphicsPipeline);
+		VkBuffer vertexBuffersSkybox[] = { model.vertexBuffer };
+		VkDeviceSize offsetsSkybox[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffersSkybox, offsetsSkybox);
+		vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindDescriptorSets(commandBuffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipeline.pipelineLayout, 0, 1, &global.descriptorSets[currentImage],
+			0, nullptr
+		);
+		vkCmdBindDescriptorSets(commandBuffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipeline.pipelineLayout, 1, 1, &DS.descriptorSets[currentImage],
+			0, nullptr
+		);
+		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+	}
+
+	void updateVkMemory(VkDevice device, uint32_t currentImage) {
+		void *data;
+		vkMapMemory(device, DS.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo), 0, &data);
+		memcpy(data, &ubo, sizeof(ubo));
+		vkUnmapMemory(device, DS.uniformBuffersMemory[0][currentImage]);
+	}
+
+	void cleanup() {
+		DS.cleanup();
+		model.cleanup();
+		texture.cleanup();
+		pipeline.cleanup();
+	}
 };
-
-void Skybox::cleanup() {
-	DS.cleanup();
-	model.cleanup();
-	texture.cleanup();
-	pipeline.cleanup();
-	DSL.cleanup();
-}
-
-void Skybox::updateVkMemory(VkDevice device, uint32_t currentImage, void *data) {
-	vkMapMemory(device, DS.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo), 0, &data);
-	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(device, DS.uniformBuffersMemory[0][currentImage]);
-}
-
-void Skybox::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, DescriptorSet& global) {
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.graphicsPipeline);
-	VkBuffer vertexBuffersSkybox[] = { model.vertexBuffer };
-	VkDeviceSize offsetsSkybox[] = { 0 };
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffersSkybox, offsetsSkybox);
-	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindDescriptorSets(commandBuffer,
-		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		pipeline.pipelineLayout, 0, 1, &global.descriptorSets[currentImage],
-		0, nullptr
-	);
-	vkCmdBindDescriptorSets(commandBuffer,
-		VK_PIPELINE_BIND_POINT_GRAPHICS,
-		pipeline.pipelineLayout, 1, 1, &DS.descriptorSets[currentImage],
-		0, nullptr
-	);
-	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
-}
-
-void Skybox::init(BaseProject *bp, DescriptorSetLayout *gubo_layout, DescriptorSetLayout *ubo_layout) {
-	pipeline.init(bp, "shaders/skyboxVert.spv", "shaders/skyboxFrag.spv", { gubo_layout, ubo_layout });
-	model.init(bp, MODEL_PATH + "skybox_cube.obj");
-	texture.init(bp, TEXTURE_PATH + "skybox toon.png");
-
-	DS.init(bp, &DSL, {
-		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-		{1, TEXTURE, 0, &texture}
-	});
-
-	ubo.model = glm::scale(glm::mat4(1.0f), glm::vec3(100, 100, 100));
-}
-
-// -------------------- end Skybox --------------------
-
-struct Square {
-	Model2D model;
-	Texture texture;
-	DescriptorSet descSet;
-	std::vector<glm::vec3> ver;
-	std::vector<uint32_t> index;
-
-	void init(DescriptorSetLayout *DSL, BaseProject *bp, std::string textureString);
-
-	void drawSquare();
-	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
-	void cleanup();
-};
-
-void Square::drawSquare() {
-	ver.clear();
-	index.clear();
-	ver.push_back({ -0.7f,-0.7f,0.0f }); index.push_back(0);
-	ver.push_back({ -0.7f,0.7f,0.0f }); index.push_back(1);
-	ver.push_back({ 0.7f,0.7f,0.0f }); index.push_back(2);
-
-	ver.push_back({ -0.7f,-0.7f,0.0f }); index.push_back(3);
-	ver.push_back({ 0.7f,-0.7f,0.0f }); index.push_back(4);
-	ver.push_back({ 0.7f,0.7f,0.0f }); index.push_back(5);
-}
-
-void Square::init(DescriptorSetLayout *DSL, BaseProject *bp, std::string textureString) {
-	ver.push_back({ 0.0f,0.0f,0.0f }); index.push_back(0);
-	model.init(bp, ver, index);
-	texture.init(bp, TEXTURE_PATH + textureString);
-	descSet.init(bp, DSL, {
-		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-		{1, TEXTURE, 0, &texture}
-		});
-}
-
-void Square::cleanup() {
-	descSet.cleanup();
-	texture.cleanup();
-	model.cleanup();
-}
-
-void Square::populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
-	VkBuffer vertexBuffers[] = { model.vertexBuffer };
-	VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-		pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
-		0, nullptr);
-
-	// draw the picture
-	vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
-}
-
-
-
-
 
 class MyProject : public BaseProject {
 	Player player;
 	std::list<Artwork> artworks;
+	std::optional<Artwork> description;
 	std::list<Sign> signs;
 	std::list<Sofa> sofas;
 
@@ -672,8 +646,7 @@ class MyProject : public BaseProject {
 	// Descriptor Layouts [what will be passed to the shaders]
 	DescriptorSetLayout DSL_gubo;
 	DescriptorSetLayout DSL_ubo;
-
-	DescriptorSetLayout DSL_text;
+	DescriptorSet DS_global; // used for cam and light points
 
 	// Pipelines
 	Pipeline museumPipeline;
@@ -682,14 +655,6 @@ class MyProject : public BaseProject {
 	Environment Museum;
 	Environment Floor;
 	Environment Island;
-
-	std::vector<glm::vec3> ver;
-	std::vector<uint32_t> index;
-
-	Square descBackground;
-
-
-	DescriptorSet DS_global; // used for cam and light points
 
 	Skybox skybox;
 	
@@ -702,34 +667,39 @@ class MyProject : public BaseProject {
 		initialBackgroundColor = {0.0f, 0.0f, 0.0f, 1.0f};
 		
 		// Descriptor pool sizes  !!!! -> ????? sono cazzo giusti ?????
-		uniformBlocksInPool = 2;
-		texturesInPool = 34 + 1;
-		setsInPool = texturesInPool+10+6;
+		uniformBlocksInPool = 100;
+		texturesInPool = 100;// 18 * 2 + 4 * 2 + 16 + 1 + 2 + 1 + 6;
+		setsInPool = 100; //  2 * texturesInPool;
 	}
 
 	// Here you load and setup all your Vulkan objects
 	void localInit() {
 		glm::mat4 temp = glm::mat4(1.0f);
 
-		// Descriptor Layouts [what will be passed to the shaders]
-		DSL_ubo.init(this, {
-					// this array contains the binding:
-					// first  element : the binding number
-					// second element : the time of element (buffer or texture)
-					// third  element : the pipeline stage where it will be used
-					{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
-					{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
-				  });
-
 		DSL_gubo.init(this, {
 			{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS},
 			});
-		
+
+		DS_global.init(this, &DSL_gubo, {
+			{0, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
+			});
+
+
+		// Descriptor Layouts [what will be passed to the shaders]
+		DSL_ubo.init(this, {
+			// this array contains the binding:
+			// first  element : the binding number
+			// second element : the time of element (buffer or texture)
+			// third  element : the pipeline stage where it will be used
+			{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
+			{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
+		});		
 
 		// Pipelines [Shader couples]
 		// The last array, is a vector of pointer to the layouts of the sets that will
 		// be used in this pipeline. The first element will be set 0, and so on..
 		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_gubo, &DSL_ubo});
+		textPipeline.init(this, "shaders/textVert.spv", "shaders/textFrag.spv", {&DSL_ubo});
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
@@ -756,7 +726,7 @@ class MyProject : public BaseProject {
 			artwork.init(&DSL_ubo, this);
 			artworks.push_front(artwork);
 		}
-
+		
 		for (auto& artwork : j_artworks["statues"].get<std::vector<Artwork>>()) {
 			artwork.init(&DSL_ubo, this);
 			artworks.push_front(artwork);
@@ -768,7 +738,7 @@ class MyProject : public BaseProject {
 		}
 
 		for (auto& sofa : j_artworks["sofas"].get<std::vector<Sofa>>()) {
-			sofa.init(&DSL_museum, this);
+			sofa.init(&DSL_ubo, this);
 			sofas.push_front(sofa);
 		}
 
@@ -780,12 +750,7 @@ class MyProject : public BaseProject {
 				});
 		}
 
-		//----Skybox---//
 		skybox.init(this, &DSL_gubo, &DSL_ubo);
-
-		DS_global.init(this, &DSL_gubo, {
-			{0, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
-		});
 
 		// init the player with the right aspect ratio of the image
 		player.init(swapChainExtent.width / (float)swapChainExtent.height, { -0.2f, 0.95f, 14.94f });
@@ -803,8 +768,7 @@ class MyProject : public BaseProject {
 		Museum.cleanup();
 		Floor.cleanup();
 		Island.cleanup();
-
-		descBackground.cleanup();
+		skybox.cleanup();
 
 		for (Artwork& pic : artworks) {
 			pic.cleanup();
@@ -819,13 +783,9 @@ class MyProject : public BaseProject {
 		}
 
 		DS_global.cleanup();
-
-		museumPipeline.cleanup();
 		DSL_gubo.cleanup();
 		DSL_ubo.cleanup();
-		skybox.cleanup();
-
-		DSL_text.cleanup();
+		museumPipeline.cleanup();
 		textPipeline.cleanup();
 	}
 	
@@ -848,8 +808,6 @@ class MyProject : public BaseProject {
 		Floor.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Island.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 
-// ---------- picture command buffer ----------
-
 		for (Artwork& pic : artworks) {
 			pic.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		}
@@ -862,20 +820,17 @@ class MyProject : public BaseProject {
 			s.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		}
 
-// --------------- skybox --------------------------
-
 		skybox.populateCommandBuffer(commandBuffer, currentImage, DS_global);
 
-		//Text
+// -------------- descriptions ---------------------------
+
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 			textPipeline.graphicsPipeline);
 
-		vkCmdBindDescriptorSets(commandBuffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			textPipeline.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
-			0, nullptr);
+		for (Artwork& piece : artworks) {
+			piece.descriptionSquare.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
+		}
 
-		descBackground.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
 	}
 
 	// Here is where you update the uniforms.
@@ -932,19 +887,34 @@ class MyProject : public BaseProject {
 			player.forward(deltaT);
 		}
 
-		if (glfwGetKey(window, GLFW_KEY_SPACE)) {
-			for (Artwork& clb : artworks) {
-				if (clb.isClicked(player.camera.getRay())) {
-					clb.handleClick();
+		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
+			/*if (description) {
+				description->hideDescription();
+				description = {};
+			}*/
+			for (Artwork& piece : artworks) {
+				if (piece.isClicked(player.camera.getRay())) {
+					piece.handleClick();
+					//description = piece;
 				}
+			}
+		}
+
+		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
+			/*if (description) {
+				std::cout << "hiding gino" << std::endl;
+				description->hideDescription();
+				description = {};
+			}*/
+
+			for (Artwork& piece : artworks) {
+				piece.hideDescription();
 			}
 		}
 
 		// ------ copying data into buffers ------
 
 		void* data;
-
-		
 
 		//Update the Camera
 		GlobalUniformBufferObject gubo{};
@@ -968,9 +938,12 @@ class MyProject : public BaseProject {
 		memcpy(data, &gubo, sizeof(gubo));
 		vkUnmapMemory(device, DS_global.uniformBuffersMemory[0][currentImage]);
 		
+		for (Artwork& piece : artworks) {
+			piece.descriptionSquare.updateUbo(currentImage, device);
+		}
 
 		// skybox -> ma se tanto � costante una volta che lo ho copiato non rimane li per sempre?
-		skybox.updateVkMemory(device, currentImage, data);
+		skybox.updateVkMemory(device, currentImage);
 	}
 };
 
