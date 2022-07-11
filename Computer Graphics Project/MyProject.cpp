@@ -220,12 +220,10 @@ struct Square {
 	UniformBufferObject ubo;
 
 	void setVisible() {
-		LOG("visible")
 		ubo.worldMatrix = visible;
 	}
 
 	void setHidden() {
-		LOG("hidden")
 		ubo.worldMatrix = hidden;
 	}
 
@@ -233,13 +231,13 @@ struct Square {
 		std::vector<Vertex> ver;
 		std::vector<uint32_t> index;
 
-		ver.push_back(Vertex{ {-0.9f, -0.9f, 0.0f}, {0, 0, 1}, {1, 0} }); index.push_back(0);
-		ver.push_back(Vertex{ {0.9f, -0.9f, 0.0f}, {0, 0, 1}, {1, 1} }); index.push_back(1);
-		ver.push_back(Vertex{ {-0.9f, 0.9f, 0.0f}, {0, 0, 1}, {0, 0} }); index.push_back(2);
+		ver.push_back(Vertex{ {-0.7f, -0.7f, 0.0f}, {0, 0, 1}, {1, 0} }); index.push_back(0);
+		ver.push_back(Vertex{ {0.7f, -0.7f, 0.0f}, {0, 0, 1}, {1, 1} }); index.push_back(1);
+		ver.push_back(Vertex{ {-0.7f, 0.7f, 0.0f}, {0, 0, 1}, {0, 0} }); index.push_back(2);
 
-		ver.push_back(Vertex{ {0.9f, -0.9f, 0.0f}, {0, 0, 1}, {1, 1} }); index.push_back(3);
-		ver.push_back(Vertex{ {0.9f, 0.9f, 0.0f}, {0, 0, 1}, {0, 1} }); index.push_back(4);
-		ver.push_back(Vertex{ {-0.9f, 0.9f, 0.0f}, {0, 0, 1}, {0, 0} }); index.push_back(5);
+		ver.push_back(Vertex{ {0.7f, -0.7f, 0.0f}, {0, 0, 1}, {1, 1} }); index.push_back(3);
+		ver.push_back(Vertex{ {0.7f, 0.7f, 0.0f}, {0, 0, 1}, {0, 1} }); index.push_back(4);
+		ver.push_back(Vertex{ {-0.7f, 0.7f, 0.0f}, {0, 0, 1}, {0, 0} }); index.push_back(5);
 
 		model.init(bp, ver, index);
 		texture.init(bp, TEXTURE_PATH + textureString);
@@ -313,7 +311,7 @@ struct Artwork {
 			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
 
 		loadClickArea(MODEL_PATH + collisionModel);
-		descriptionSquare.init(ubo_dsl, bp, descrTextureName);
+		descriptionSquare.init(ubo_dsl, bp, "descriptions/" + descrTextureName);
 	}
 
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
@@ -339,6 +337,7 @@ struct Artwork {
 		descSet.cleanup();
 		texture.cleanup();
 		model.cleanup();
+		descriptionSquare.cleanup();
 	}
 
 	void loadClickArea(std::string file) {
@@ -373,7 +372,6 @@ struct Artwork {
 	}
 
 	void handleClick() {
-		std::cout << textureName << std::endl;
 		descriptionSquare.setVisible();
 	}
 
@@ -388,7 +386,7 @@ struct Artwork {
 	bool isClicked(Ray ray) {
 		for (Triangle& t : body) {
 			auto intersection = t.lineIntersectInside(ray);
-			if (intersection) return glm::length(ray.origin - *intersection) < 1.5;
+			if (intersection) return glm::length(ray.origin - *intersection) < 3.0;
 		}
 
 		return false;
@@ -593,6 +591,7 @@ struct Skybox {
 		ubo.worldMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(100, 100, 100));
 	}
 
+
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, DescriptorSet& global) {
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.graphicsPipeline);
 		VkBuffer vertexBuffersSkybox[] = { model.vertexBuffer };
@@ -612,71 +611,23 @@ struct Skybox {
 		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 	}
 
-void Skybox::init(BaseProject *bp, DescriptorSetLayout *global) {
-	//baseProject = bp;
-
-	DSL.init(bp, {
-		{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
-		{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
-	});
-
-	pipeline.init(bp, "shaders/skyboxVert.spv", "shaders/skyboxFrag.spv", { global, &DSL });
-	model.init(bp, MODEL_PATH + "skybox_cube.obj");
-	texture.init(bp, TEXTURE_PATH + "skybox toon.png");
-
-	DS.init(bp, &DSL, {
-		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-		{1, TEXTURE, 0, &texture}
-		});
-
-	ubo.model = glm::scale(glm::mat4(1.0f), glm::vec3(100, 100, 100));
-}
-
-// -------------------- end Skybox --------------------
-
-struct Square {
-	Model2D model;
-	Texture texture;
-	DescriptorSet descSet;
-	std::vector<glm::vec3> ver;
-	std::vector<uint32_t> index;
-
-	void init(DescriptorSetLayout *DSL, BaseProject *bp, std::string textureString);
-
-	void drawSquare();
-	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline);
-	void cleanup();
-};
-
-void Square::drawSquare() {
-	ver.clear();
-	index.clear();
-	ver.push_back({ -0.7f,-0.7f,0.0f }); index.push_back(0);
-	ver.push_back({ -0.7f,0.7f,0.0f }); index.push_back(1);
-	ver.push_back({ 0.7f,0.7f,0.0f }); index.push_back(2);
-
-	ver.push_back({ -0.7f,-0.7f,0.0f }); index.push_back(3);
-	ver.push_back({ 0.7f,-0.7f,0.0f }); index.push_back(4);
-	ver.push_back({ 0.7f,0.7f,0.0f }); index.push_back(5);
-}
-
-void Square::init(DescriptorSetLayout *DSL, BaseProject *bp, std::string textureString) {
-	ver.push_back({ 0.0f,0.0f,0.0f }); index.push_back(0);
-	model.init(bp, ver, index);
-	texture.init(bp, TEXTURE_PATH + textureString);
-	descSet.init(bp, DSL, {
-		{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-		{1, TEXTURE, 0, &texture}
-		});
-}
-
 	void cleanup() {
 		DS.cleanup();
 		model.cleanup();
 		texture.cleanup();
 		pipeline.cleanup();
 	}
+
+	void updateVkMemory(VkDevice device, uint32_t currentImage) {
+		void *data;
+		vkMapMemory(device, DS.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo), 0, &data);
+		memcpy(data, &ubo, sizeof(ubo));
+		vkUnmapMemory(device, DS.uniformBuffersMemory[0][currentImage]);
+	}
 };
+
+// -------------------- end Skybox --------------------
+
 
 class MyProject : public BaseProject {
 	Player player;
@@ -707,13 +658,6 @@ class MyProject : public BaseProject {
 	Environment Floor;
 	Environment Island;
 
-	std::vector<glm::vec3> ver;
-	std::vector<uint32_t> index;
-
-	Square descBackground;
-
-
-	DescriptorSet DS_global; // used for cam and light points
 
 	Skybox skybox;
 	
@@ -726,9 +670,9 @@ class MyProject : public BaseProject {
 		initialBackgroundColor = {0.0f, 0.0f, 0.0f, 1.0f};
 		
 		// Descriptor pool sizes  !!!! -> ????? sono cazzo giusti ?????
-		uniformBlocksInPool = 2;
-		texturesInPool = 34 + 1;
-		setsInPool = texturesInPool+10+6;
+		texturesInPool = 70;
+		uniformBlocksInPool = texturesInPool + 1;
+		setsInPool = texturesInPool+2;
 	}
 
 	// Here you load and setup all your Vulkan objects
@@ -757,11 +701,10 @@ class MyProject : public BaseProject {
 		// Pipelines [Shader couples]
 		// The last array, is a vector of pointer to the layouts of the sets that will
 		// be used in this pipeline. The first element will be set 0, and so on..
-		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_global, &DSL_museum});
-		textPipeline.init(this, "shaders/textVert.spv", "shaders/textFrag.spv", {&DSL_global, &DSL_text});
+		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_gubo, &DSL_ubo});
+		textPipeline.init(this, "shaders/textVert.spv", "shaders/textFrag.spv", {&DSL_ubo});
 
 
-		descBackground.init(&DSL_text, this, "wall.jpg");
 		
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
@@ -892,8 +835,6 @@ class MyProject : public BaseProject {
 		for (Artwork& piece : artworks) {
 			piece.descriptionSquare.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
 		}
-
-		descBackground.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
 	}
 
 	// Here is where you update the uniforms.
