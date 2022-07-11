@@ -170,7 +170,7 @@
             "rotate": [-90, -90, 0],
             "translate": [6.0, 0.05, -2.0],
             "description": "VenusDesc.png",
-            "clickArea": "Venus_Milo.obj"
+            "clickArea": "VenusMiloCollider.obj"
         },
         {
             "model": "David.obj",
@@ -179,7 +179,7 @@
             "rotate": [-90, -90, 0],
             "translate": [6, 0.05, -0.5],
             "description": "DavidDesc.png",
-            "clickArea": "David.obj"
+            "clickArea": "DavidCollider.obj"
         },
         {
             "model": "Discobolus.obj",
@@ -188,7 +188,7 @@
             "rotate": [-90, -90, 0],
             "translate": [6, 0.05, 1],
             "description": "DiscobolusDesc.png",
-            "clickArea": "Discobolus.obj"
+            "clickArea": "DiscobolusCollider.obj"
         },
         {
             "model": "Among_Us.obj",
@@ -197,7 +197,7 @@
             "rotate": [0, 90, 0],
             "translate": [3, 0.05, 1],
             "description": "AmongUsDesc.png",
-            "clickArea": "Among_Us.obj"
+            "clickArea": "amongUsCollider.obj"
         }
     ],
     "signs": [
