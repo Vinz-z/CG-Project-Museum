@@ -206,6 +206,68 @@ private:
 	}
 };
 
+struct Circle {
+	Model2D model;
+	Texture texture;
+	DescriptorSet descSet;
+
+	UniformBufferObject ubo;
+
+	void init(DescriptorSetLayout *DSL, BaseProject *bp, std::string textureString, float r) {
+		std::vector<Vertex> ver;
+		std::vector<uint32_t> index;
+		int k = 1;
+		int precision = 50;
+		float angle = 2 * glm::pi<float>() / precision;
+	
+		ver.push_back(Vertex{ {0.0f, 0.0f , 0.0f}, {0, 0, 1}, {0, 0} });
+		for (int i = 0; i < 50; i++) {
+			index.push_back(0);
+			ver.push_back(Vertex{ {r * glm::cos(angle*i), r * glm::sin(angle*i) , 0.0f}, {0, 0, 1}, {0, 0} }); index.push_back(k);
+			ver.push_back(Vertex{ {r * glm::cos(angle*(i+1)), r * glm::sin(angle*(i+1)) , 0.0f}, {0, 0, 1}, {0, 0} }); index.push_back(k + 1);
+			k+= 2;
+		}
+
+
+		model.init(bp, ver, index);
+		texture.init(bp, TEXTURE_PATH + textureString);
+		descSet.init(bp, DSL, {
+			{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+			{1, TEXTURE, 0, &texture}
+			});
+
+		ubo.worldMatrix = glm::scale(glm::mat4(1), glm::vec3(9.0f/16.0f, 1.0f, 1.0f));
+	}
+
+	void cleanup() {
+		descSet.cleanup();
+		texture.cleanup();
+		model.cleanup();
+	}
+
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
+		VkBuffer vertexBuffers[] = { model.vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipeline.pipelineLayout, 0, 1, &descSet.descriptorSets[currentImage],
+			0, nullptr
+		);
+
+		// draw the picture
+		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+	}
+
+	void updateUbo(int currentImage, VkDevice device) {
+		void* data;
+		vkMapMemory(device, descSet.uniformBuffersMemory[0][currentImage], 0, sizeof(ubo), 0, &data);
+		memcpy(data, &ubo, sizeof(ubo));
+		vkUnmapMemory(device, descSet.uniformBuffersMemory[0][currentImage]);
+	}
+};
+
 struct Square {
 	Model2D model;
 	Texture texture;
@@ -667,6 +729,7 @@ class MyProject : public BaseProject {
 	Artwork* description = nullptr;//std::optional<Artwork> description;
 	std::list<Sign> signs;
 	std::list<Sofa> sofas;
+	Circle pointer;
 
 	// time
 	std::chrono::time_point<std::chrono::steady_clock> startTime;
@@ -756,6 +819,9 @@ class MyProject : public BaseProject {
 		std::ifstream f_artworks("config/artworks.json");
 		nlohmann::json j_artworks;
 		f_artworks >> j_artworks;
+	
+		pointer.init(&DSL_ubo, this, "white.png", 0.01f);
+
 
 		for (auto& artwork : j_artworks["pictures"].get<std::vector<Artwork>>()) {
 			artwork.init(&DSL_ubo, this);
@@ -810,6 +876,7 @@ class MyProject : public BaseProject {
 		Floor.cleanup();
 		Island.cleanup();
 		skybox.cleanup();
+		pointer.cleanup();
 
 		for (Artwork& pic : artworks) {
 			pic.cleanup();
@@ -870,6 +937,9 @@ class MyProject : public BaseProject {
 		for (Artwork& piece : artworks) {
 			piece.descriptionSquare.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
 		}
+
+		pointer.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
+
 	}
 
 	// Here is where you update the uniforms.
@@ -948,8 +1018,9 @@ class MyProject : public BaseProject {
 		}
 
 		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
-			if (description != nullptr)
-				description->hideDescription();
+			for (Artwork& piece : artworks) {
+				piece.hideDescription();
+			}
 		}
 
 		// ------ copying data into buffers ------
@@ -981,6 +1052,8 @@ class MyProject : public BaseProject {
 		for (Artwork& piece : artworks) {
 			piece.descriptionSquare.updateUbo(currentImage, device);
 		}
+
+		pointer.updateUbo(currentImage, device);
 
 		// skybox -> ma se tanto � costante una volta che lo ho copiato non rimane li per sempre?
 		skybox.updateVkMemory(device, currentImage);
