@@ -210,7 +210,7 @@ private:
 		// check for each boundary if there is a collision -> if yes then cant move in this direction
 		for (Triangle& t : boundaries) {
 			auto intersec = t.lineIntersectInside(Ray{ position, dir });
-			if (intersec && glm::length(*intersec - position) <= (glm::length(dir) + 0.1f)) { return; }
+			if (intersec && glm::length(*intersec - position) <= (glm::length(dir) + 0.3f)) { return; }
 		}
 
 		position += dir;
@@ -223,16 +223,14 @@ struct Square {
 	Texture texture;
 	DescriptorSet descSet;
 
-	glm::mat4 hidden = glm::translate(glm::mat4(1), glm::vec3(0, 2, 0));//glm::translate(glm::mat4(1), glm::vec3(0, -1000, 0));
-	glm::mat4 visible = glm::mat4(1);
 	UniformBufferObject ubo;
 
 	void setVisible() {
-		ubo.worldMatrix = visible;
+		ubo.worldMatrix = glm::mat4(1);
 	}
 
 	void setHidden() {
-		ubo.worldMatrix = hidden;
+		ubo.worldMatrix = glm::translate(glm::mat4(1), glm::vec3(0, 2, 0));
 	}
 
 	void init(DescriptorSetLayout *DSL, BaseProject *bp, std::string textureString) {
@@ -254,7 +252,7 @@ struct Square {
 			{1, TEXTURE, 0, &texture}
 		});
 
-		ubo.worldMatrix = hidden;
+		ubo.worldMatrix = glm::translate(glm::mat4(1), glm::vec3(0, 2, 0));
 	}
 
 	void cleanup() {
@@ -295,6 +293,8 @@ struct Artwork {
 	std::vector<float> translate;
 	std::vector<float> rotate;
 	std::vector<float> scale;
+
+	std::list<Triangle> body;
 
 	Model model;
 	Texture texture;
@@ -380,6 +380,7 @@ struct Artwork {
 	}
 
 	void handleClick() {
+		LOG("handling click for " << textureName)
 		descriptionSquare.setVisible();
 	}
 
@@ -391,18 +392,18 @@ struct Artwork {
 		body.push_front(t);
 	}
 
-	bool isClicked(Ray ray) {
+	bool isClicked(Ray ray, float& distance) {
 		for (Triangle& t : body) {
 			auto intersection = t.lineIntersectInside(ray);
-			if (intersection) return glm::length(ray.origin - *intersection) < 3.0;
+			if (intersection) {
+				glm::vec3 temp = *intersection - ray.origin;
+				distance = glm::length(temp);
+				return distance < 4.0 && glm::dot(temp, ray.direction) < 0;
+			}
 		}
 
 		return false;
-
 	}
-
-private:
-	std::list<Triangle> body;
 };
 
 struct Sofa {
@@ -410,6 +411,8 @@ struct Sofa {
 	std::vector<float> translate;
 	std::vector<float> rotate;
 	std::vector<float> scale;
+
+	std::list<Triangle> body;
 
 	Model model;
 	Texture texture;
@@ -430,6 +433,39 @@ struct Sofa {
 			glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
 			glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
 			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
+
+		loadClickArea(MODEL_PATH + "sofaBoxCollider.obj");
+	}
+
+	void loadClickArea(std::string file) {
+		tinyobj::attrib_t attrib;
+		std::vector<tinyobj::shape_t> shapes;
+		std::vector<tinyobj::material_t> materials;
+		std::string warn, err;
+
+		if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err,
+			file.c_str())) {
+			throw std::runtime_error(warn + err);
+		}
+
+		for (const auto& shape : shapes) {
+			for (int i = 0; i < shape.mesh.indices.size(); i += 3) {
+				body.push_back(Triangle{
+						pco.worldMat * glm::vec4(
+							attrib.vertices[3 * shape.mesh.indices[i].vertex_index + 0],
+							attrib.vertices[3 * shape.mesh.indices[i].vertex_index + 1],
+							attrib.vertices[3 * shape.mesh.indices[i].vertex_index + 2], 1.0f),
+						pco.worldMat * glm::vec4(
+							attrib.vertices[3 * shape.mesh.indices[i + 1].vertex_index + 0],
+							attrib.vertices[3 * shape.mesh.indices[i + 1].vertex_index + 1],
+							attrib.vertices[3 * shape.mesh.indices[i + 1].vertex_index + 2], 1.0f),
+						pco.worldMat * glm::vec4(
+							attrib.vertices[3 * shape.mesh.indices[i + 2].vertex_index + 0],
+							attrib.vertices[3 * shape.mesh.indices[i + 2].vertex_index + 1],
+							attrib.vertices[3 * shape.mesh.indices[i + 2].vertex_index + 2], 1.0f),
+					});
+			}
+		}
 	}
 
 	void cleanup() {
@@ -640,7 +676,7 @@ struct Skybox {
 class MyProject : public BaseProject {
 	Player player;
 	std::list<Artwork> artworks;
-	std::optional<Artwork> description;
+	Artwork* description = nullptr;//std::optional<Artwork> description;
 	std::list<Sign> signs;
 	std::list<Sofa> sofas;
 
@@ -712,9 +748,6 @@ class MyProject : public BaseProject {
 		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_gubo, &DSL_ubo});
 		textPipeline.init(this, "shaders/textVert.spv", "shaders/textFrag.spv", {&DSL_ubo});
 
-
-		
-
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
@@ -744,6 +777,9 @@ class MyProject : public BaseProject {
 		for (auto& artwork : j_artworks["statues"].get<std::vector<Artwork>>()) {
 			artwork.init(&DSL_ubo, this);
 			artworks.push_front(artwork);
+			for (Triangle& t : artwork.body) {
+				player.addTriangle(t);
+			}
 		}
 
 		for (auto& sign : j_artworks["signs"].get<std::vector<Sign>>()) {
@@ -754,6 +790,9 @@ class MyProject : public BaseProject {
 		for (auto& sofa : j_artworks["sofas"].get<std::vector<Sofa>>()) {
 			sofa.init(&DSL_ubo, this);
 			sofas.push_front(sofa);
+			for (Triangle& t : sofa.body) {
+				player.addTriangle(t);
+			}
 		}
 
 		for (int i = 0; i < Museum.model.indices.size() - 1; i += 3) {
@@ -902,28 +941,28 @@ class MyProject : public BaseProject {
 		}
 
 		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
-			/*if (description) {
-				description->hideDescription();
-				description = {};
-			}*/
+			LOG("-------------------------------------------------------------------------")
+			float distance = -1;
+			float minDistance = std::numeric_limits<float>::infinity();
+			description = nullptr;
+
 			for (Artwork& piece : artworks) {
-				if (piece.isClicked(player.camera.getRay())) {
-					piece.handleClick();
-					//description = piece;
+				LOG(distance << " "  << minDistance << " " << piece.textureName)
+				if (piece.isClicked(player.camera.getRay(), distance)) {
+					if (distance < minDistance) {
+						description = &piece;
+						minDistance = distance;
+					}
 				}
 			}
+
+			if (description != nullptr)
+				description->handleClick();
 		}
 
 		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) {
-			/*if (description) {
-				std::cout << "hiding gino" << std::endl;
+			if (description != nullptr)
 				description->hideDescription();
-				description = {};
-			}*/
-
-			for (Artwork& piece : artworks) {
-				piece.hideDescription();
-			}
 		}
 
 
