@@ -134,6 +134,14 @@ struct Camera {
 		return { position, getViewDirection() };
 	}
 
+	glm::vec3 getCamPos() {
+		return position;
+	}
+
+	void setCamPos(glm::vec3 newPos) {
+		position = newPos;
+	}
+
 private:
 	glm::vec3 angles;
 	glm::vec3 position;
@@ -846,6 +854,8 @@ class MyProject : public BaseProject {
 		float deltaT = time - lastTime;
 		lastTime = time;
 
+		glm::vec3 oldPos = player.camera.getCamPos();
+
 		double xpos, ypos;
 		glfwGetCursorPos(window, &xpos, &ypos);
 		double m_dx = old_xpos - xpos;
@@ -915,6 +925,7 @@ class MyProject : public BaseProject {
 				piece.hideDescription();
 			}
 		}
+
 
 		// ------ copying data into buffers ------
 
