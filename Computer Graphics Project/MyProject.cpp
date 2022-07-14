@@ -13,7 +13,7 @@ const std::string TEXTURE_PATH = "textures/";
 struct GlobalUniformBufferObject {
 	alignas(16) glm::mat4 view; // alignas lo usa cpp per allineare i byte della matrice... 
 	alignas(16) glm::mat4 proj; // la shader puo avere problemi con dei padding tra campi di una struttura
-	alignas(16) glm::vec3 lightPos[8];
+	alignas(16) glm::vec3 lightPos[10];
 	alignas(16) glm::vec3 lightColor;
 	alignas(16) glm::vec3 sunLightDir;
 	alignas(16) glm::vec3 sunLightColor;
@@ -518,6 +518,7 @@ struct Word3D {
 		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 	}
 };
+
 struct Sofa {
 	std::string textureName;
 	std::vector<float> translate;
@@ -802,6 +803,7 @@ class MyProject : public BaseProject {
 	Circle pointer;
 	Word3D museumName;
 
+
 	// time
 	std::chrono::time_point<std::chrono::steady_clock> startTime;
 	float lastTime = 0;
@@ -876,7 +878,7 @@ class MyProject : public BaseProject {
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
 
-		Museum.init(&DSL_ubo, this, MODEL_PATH + "museumTri.obj", TEXTURE_PATH + "wall.jpg", temp);
+		Museum.init(&DSL_ubo, this, MODEL_PATH + "museumTri.obj", TEXTURE_PATH + "interior_color.png", temp);
 		
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
@@ -936,7 +938,7 @@ class MyProject : public BaseProject {
 		skybox.init(this, &DSL_gubo, &DSL_ubo);
 
 		// init the player with the right aspect ratio of the image
-		player.init(swapChainExtent.width / (float)swapChainExtent.height, { -0.2f, 0.95f, 14.94f });
+		player.init(swapChainExtent.width / (float)swapChainExtent.height, { -0.2f, 0.95f, 19.0f });
 
 		// time initialization
 		startTime = std::chrono::high_resolution_clock::now();
@@ -1147,6 +1149,8 @@ class MyProject : public BaseProject {
 		gubo.lightPos[5] = glm::vec3(5.0f, 2.0f, 8.4f);
 		gubo.lightPos[6] = glm::vec3(5.0f, 2.0f, 3.7f);
 		gubo.lightPos[7] = glm::vec3(5.0f, 2.0f, -1.0f);
+		gubo.lightPos[8] = glm::vec3(0.5f, 2.38f, 16.0f);
+		gubo.lightPos[9] = glm::vec3(3.0f, 2.38f, 16.0f);
 		gubo.lightColor = glm::vec3(1.0f, 0.96f, 0.934f);
 		gubo.sunLightDir = glm::vec3(cos(glm::radians(time * 5)), sin(glm::radians(time * 5)), 0.0f); //sun (direct) light
 		gubo.sunLightColor = glm::vec3(0.99f,0.9f,0.44f) * glm::clamp(sin(glm::radians(time * 5)), 0.0f, 1.0f);
