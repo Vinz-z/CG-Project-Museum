@@ -125,13 +125,21 @@ struct Camera {
 	glm::vec4 getViewDirection() {
 		return
 			glm::rotate(glm::mat4(1.0), angles.z, glm::vec3(0, 0, 1)) *
-			glm::rotate(glm::mat4(1.0), glm::clamp(angles.x, -glm::half_pi<float>(), glm::half_pi<float>()), glm::vec3(1, 0, 0)) *
+			glm::rotate(glm::mat4(1.0), -glm::clamp(angles.x, -glm::half_pi<float>(), glm::half_pi<float>()), glm::vec3(1, 0, 0)) *
 			glm::rotate(glm::mat4(1.0), angles.y, glm::vec3(0, 1, 0)) *
 			glm::vec4(0, 0, 1, 1);
 	}
 
 	Ray getRay() {
 		return { position, getViewDirection() };
+	}
+
+	glm::vec3 getCamPos() {
+		return position;
+	}
+
+	void setCamPos(glm::vec3 newPos) {
+		position = newPos;
 	}
 
 private:
@@ -202,7 +210,7 @@ private:
 		// check for each boundary if there is a collision -> if yes then cant move in this direction
 		for (Triangle& t : boundaries) {
 			auto intersec = t.lineIntersectInside(Ray{ position, dir });
-			if (intersec && glm::length(*intersec - position) <= (glm::length(dir) + 0.3f)) { return; }
+			if (intersec && glm::length(*intersec - position) <= (glm::length(dir) + 0.5f)) { return; }
 		}
 
 		position += dir;
@@ -338,11 +346,14 @@ struct Square {
 	}
 };
 
+enum Art { PICTURE, STATUE };
+
 struct Artwork {
 	std::string textureName; // texture
 	std::string modelName; // model
 	std::string collisionModel; // clickable area
 	std::string descrTextureName; // description image
+	Art type;
 
 	std::vector<float> translate;
 	std::vector<float> rotate;
@@ -697,6 +708,7 @@ void from_json(const nlohmann::json& j, Artwork& o) {
 	j.at("model").get_to(o.modelName);
 	j.at("clickArea").get_to(o.collisionModel);
 	j.at("description").get_to(o.descrTextureName);
+	j.at("type").get_to(o.type);
 
 	j.at("translate").get_to(o.translate);
 	j.at("scale").get_to(o.scale);
@@ -811,6 +823,7 @@ class MyProject : public BaseProject {
 	// Pipelines
 	Pipeline museumPipeline;
 	Pipeline textPipeline;
+	Pipeline statuePipeline;
 
 	Environment Museum;
 	Environment Floor;
@@ -861,6 +874,7 @@ class MyProject : public BaseProject {
 		// be used in this pipeline. The first element will be set 0, and so on..
 		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_gubo, &DSL_ubo});
 		textPipeline.init(this, "shaders/textVert.spv", "shaders/textFrag.spv", {&DSL_ubo});
+		statuePipeline.init(this, "shaders/statueVert.spv", "shaders/statueFrag.spv", { &DSL_gubo, &DSL_ubo });
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
@@ -899,6 +913,7 @@ class MyProject : public BaseProject {
 			for (Triangle& t : artwork.body) {
 				player.addTriangle(t);
 			}
+			
 		}
 
 		for (auto& sign : j_artworks["signs"].get<std::vector<Sign>>()) {
@@ -956,11 +971,13 @@ class MyProject : public BaseProject {
 			s.cleanup();
 		}
 
+
 		DS_global.cleanup();
 		DSL_gubo.cleanup();
 		DSL_ubo.cleanup();
 		museumPipeline.cleanup();
 		textPipeline.cleanup();
+		statuePipeline.cleanup();
 	}
 	
 	// Here it is the creation of the command buffer:
@@ -969,6 +986,10 @@ class MyProject : public BaseProject {
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage) {
 		
 // ---------- Environment command buffer ----------
+
+		std::ifstream f_artworks("config/artworks.json");
+		nlohmann::json j_artworks;
+		f_artworks >> j_artworks;
 		
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
 				museumPipeline.graphicsPipeline);
@@ -979,13 +1000,14 @@ class MyProject : public BaseProject {
 			0, nullptr);
 
 		Museum.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
-		Floor.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Island.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 
 		museumName.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 
 		for (Artwork& pic : artworks) {
-			pic.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+			if (pic.type == PICTURE) {
+				pic.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+			}
 		}
 
 		for (Sign& s : signs) {
@@ -1007,6 +1029,26 @@ class MyProject : public BaseProject {
 		}
 
 		pointer.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
+
+
+		//Statues
+		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			statuePipeline.graphicsPipeline);
+
+		vkCmdBindDescriptorSets(commandBuffer,
+			VK_PIPELINE_BIND_POINT_GRAPHICS,
+			statuePipeline.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
+			0, nullptr);
+
+
+		for (Artwork& pic : artworks) {
+			if (pic.type == STATUE) {
+				pic.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
+			}
+		}
+
+		Floor.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
+
 	}
 
 	// Here is where you update the uniforms.
@@ -1017,6 +1059,8 @@ class MyProject : public BaseProject {
 			(currentTime - startTime).count();
 		float deltaT = time - lastTime;
 		lastTime = time;
+
+		glm::vec3 oldPos = player.camera.getCamPos();
 
 		double xpos, ypos;
 		glfwGetCursorPos(window, &xpos, &ypos);
@@ -1088,6 +1132,7 @@ class MyProject : public BaseProject {
 				piece.hideDescription();
 			}
 		}
+
 
 		// ------ copying data into buffers ------
 
