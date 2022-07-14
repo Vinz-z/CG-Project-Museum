@@ -72,7 +72,7 @@ vec4 createSunLight(vec3 N, vec3 V, vec3 diffColor, float specPower){
 
 void main() {
 	const vec3  diffColor = texture(texSampler, fragTexCoord).rgb;
-	const float specPower = 64.0f;
+	const float specPower = 16.0f;
 	vec3 N = normalize(fragNorm);
 	vec3 V = normalize((gubo.view[3]).xyz - fragPos);
 	/*--------------------------------------------------------------

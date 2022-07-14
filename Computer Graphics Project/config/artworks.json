@@ -360,9 +360,9 @@
     ],
     "word3D":
         {
-            "src": "Matisse.png",
-            "scale": [0.3, 0.3, 0.3],
-            "rotate": [0, 0, 0],
-            "translate": [4.0, 2.0, 15.4]
+            "src": "bordeaux.png",
+            "scale": [0.25, 0.25, 0.25],
+            "rotate": [90, 0, 0],
+            "translate": [1.8, 2.38, 15.5]
         }  
 }
