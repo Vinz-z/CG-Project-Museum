@@ -7,7 +7,8 @@
             "rotate": [0,0,0],
             "translate": [-1.9, 0.9, 12.5],
             "description": "DanceDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },{
             "src": "Donna_Cappello.png",
             "model": "pictures.obj",
@@ -15,7 +16,8 @@
             "rotate": [0, 180, 0],
             "translate": [2.3, 0.8,  12.3],
             "description": "DonnaCappelloDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "starringNight.png",
@@ -24,7 +26,8 @@
             "rotate": [0, 0, 0],
             "translate": [-1.9, 0.9, 4.2],
             "description": "StarryNightDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "VanGogh.png",
@@ -33,7 +36,8 @@
             "rotate": [0, 0, 0],
             "translate": [-1.9, 1.1, 2.4],
             "description": "VanGoghDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "Girasoli.png",
@@ -42,7 +46,8 @@
             "rotate": [0, 180, 0],
             "translate": [2.3, 1.0, 3.5],
             "description": "GirasoliDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "La_Camera.png",
@@ -51,7 +56,8 @@
             "rotate": [0, 180, 0],
             "translate": [2.3, 1.0, 5.5],
             "description": "StanzaDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "Guernica.png",
@@ -60,7 +66,8 @@
             "rotate": [0, 0, 0],
             "translate": [-1.8, 0.6, -2.4],
             "description": "GuernicaDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "Boulevard_monmarte.png",
@@ -69,7 +76,8 @@
             "rotate": [0, 0, 0],
             "translate": [-1.9, 0.9, 6.65],
             "description": "BoulevardDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "Impression_Sunrise.png",
@@ -78,7 +86,8 @@
             "rotate": [0, 0, 0],
             "translate": [-1.9, 0.9, 8.9],
             "description": "ImpressionDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "a_sunday_afternoon.png",
@@ -87,7 +96,8 @@
             "rotate": [0, 180, 0],
             "translate": [2.3, 0.9, 8.2],
             "description": "SundayDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "Manet_Dejeuner.png",
@@ -96,7 +106,8 @@
             "rotate": [0, 180, 0],
             "translate": [2.3, 0.9, 10.2],
             "description": "DejeunerDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "Munch_Scream.png",
@@ -105,7 +116,8 @@
             "rotate": [0, 180, 0],
             "translate": [6.8, 0.85, 3.2],
             "description": "TheScreamDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "Composizione_VI.png",
@@ -114,7 +126,8 @@
             "rotate": [0, 180, 0],
             "translate": [6.8, 0.9, 5.4],
             "description": "ComposizioneVIDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "Cavalli.png",
@@ -123,7 +136,8 @@
             "rotate": [0, 0, 0],
             "translate": [2.6, 0.9, 3.4],
             "description": "BlueHorses.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "Volpedo_FourthEstate.png",
@@ -132,7 +146,8 @@
             "rotate": [0, 180, 0],
             "translate": [6.8, 0.7, 14.6],
             "description": "FourthEstateDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "Dream.png",
@@ -141,7 +156,8 @@
             "rotate": [0, 180, 0],
             "translate": [6.8, 0.9, 9.9],
             "description": "DreamDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "Cigni.png",
@@ -150,7 +166,8 @@
             "rotate": [0, 0, 0],
             "translate": [2.6, 0.9, 8.0],
             "description": "CigniDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         },
         {
             "src": "Persistenza.png",
@@ -159,7 +176,8 @@
             "rotate": [0, 180, 0],
             "translate": [6.8, 0.9, 7.8],
             "description": "PersistenzaDesc.png",
-            "clickArea": "planePicture.obj"
+            "clickArea": "planePicture.obj",
+            "type": 0
         }
     ],
     "statues": [
@@ -170,7 +188,8 @@
             "rotate": [-90, -90, 0],
             "translate": [6.0, 0.05, -2.0],
             "description": "VenusDesc.png",
-            "clickArea": "VenusMiloCollider.obj"
+            "clickArea": "VenusMiloCollider.obj",
+            "type": 1
         },
         {
             "model": "David.obj",
@@ -179,7 +198,8 @@
             "rotate": [-90, -90, 0],
             "translate": [6, 0.05, -0.5],
             "description": "DavidDesc.png",
-            "clickArea": "DavidCollider.obj"
+            "clickArea": "DavidCollider.obj",
+            "type": 1
         },
         {
             "model": "Discobolus.obj",
@@ -188,7 +208,8 @@
             "rotate": [-90, -90, 0],
             "translate": [6, 0.05, 1],
             "description": "DiscobolusDesc.png",
-            "clickArea": "DiscobolusCollider.obj"
+            "clickArea": "DiscobolusCollider.obj",
+            "type": 1
         },
         {
             "model": "Among_Us.obj",
@@ -197,7 +218,8 @@
             "rotate": [0, 90, 0],
             "translate": [3, 0.05, 1],
             "description": "AmongUsDesc.png",
-            "clickArea": "amongUsCollider.obj"
+            "clickArea": "amongUsCollider.obj",
+            "type": 1
         }
     ],
     "signs": [
