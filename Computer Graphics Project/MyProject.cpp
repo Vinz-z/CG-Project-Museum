@@ -104,7 +104,7 @@ struct Camera {
 
 	void rotate(glm::vec3 deltaRotation) {
 		angles += deltaRotation;
-		camera = 
+		cameraDirection =
 			glm::rotate(glm::mat4(1.0f), angles.y, glm::vec3(0.0f, 1.0f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::clamp(angles.x, -glm::half_pi<float>(), glm::half_pi<float>()), glm::vec3(1.0f, 0.0f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), angles.z, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -115,7 +115,7 @@ struct Camera {
 	}
 
 	glm::mat4 getCameraMatrix() {
-		return glm::translate(glm::transpose(camera), -position);
+		return glm::translate(glm::transpose(cameraDirection), -position);
 	}
 
 	glm::mat4 getProjectionMatrix() {
@@ -123,11 +123,7 @@ struct Camera {
 	}
 
 	glm::vec4 getViewDirection() {
-		return
-			glm::rotate(glm::mat4(1.0), angles.z, glm::vec3(0, 0, 1)) *
-			glm::rotate(glm::mat4(1.0), -glm::clamp(angles.x, -glm::half_pi<float>(), glm::half_pi<float>()), glm::vec3(1, 0, 0)) *
-			glm::rotate(glm::mat4(1.0), angles.y, glm::vec3(0, 1, 0)) *
-			glm::vec4(0, 0, 1, 1);
+		return cameraDirection * glm::normalize(glm::vec4(0, 0, -1, 1));
 	}
 
 	Ray getRay() {
@@ -148,7 +144,7 @@ private:
 	float near;
 	float far;
 	float fov;
-	glm::mat4 camera;
+	glm::mat4 cameraDirection;
 	glm::mat4 projection;
 };
 
@@ -168,7 +164,7 @@ struct Player {
 		auto ds = (vectorProjection(vd, glm::vec3(1, 0, 0)) + vectorProjection(vd, glm::vec3(0, 0, 1))) 
 			* movementSpeed 
 			* dt;
-		move(-ds);
+		move(ds);
 	}
 
 	void backward(float dt) {
@@ -176,7 +172,7 @@ struct Player {
 		auto ds = (vectorProjection(vd, glm::vec3(1, 0, 0)) + vectorProjection(vd, glm::vec3(0, 0, 1)))
 			* movementSpeed
 			* dt;
-		move(ds);
+		move(-ds);
 	}
 
 	void left(float dt) {
@@ -184,7 +180,7 @@ struct Player {
 		auto ds = (vectorProjection(glm::vec3(vd), glm::vec3(1, 0, 0)) + vectorProjection(glm::vec3(vd), glm::vec3(0, 0, 1)))
 			* movementSpeed
 			* dt;
-		move(-ds);
+		move(ds);
 	}
 
 	void right(float dt) {
@@ -192,7 +188,7 @@ struct Player {
 		auto ds = (vectorProjection(glm::vec3(vd), glm::vec3(1, 0, 0)) + vectorProjection(glm::vec3(vd), glm::vec3(0, 0, 1)))
 			* movementSpeed
 			* dt;
-		move(ds);
+		move(-ds);
 	}
 
 	void moveHead(glm::vec3 deltaRotation) {
@@ -463,7 +459,7 @@ struct Artwork {
 			if (intersection) {
 				glm::vec3 temp = *intersection - ray.origin;
 				distance = glm::length(temp);
-				return distance < 4.0 && glm::dot(temp, ray.direction) < 0;
+				return distance < 4.0 && glm::dot(temp, ray.direction) > 0;
 			}
 		}
 
@@ -800,7 +796,7 @@ struct Skybox {
 class MyProject : public BaseProject {
 	Player player;
 	std::list<Artwork> artworks;
-	Artwork* description = nullptr;//std::optional<Artwork> description;
+	Artwork* description = nullptr;
 	std::list<Sign> signs;
 	std::list<Sofa> sofas;
 	Circle pointer;
@@ -1071,6 +1067,7 @@ class MyProject : public BaseProject {
 		// ------ camera movement ------
 
 		glm::vec3 viewChange = glm::vec3(0.0f, 0.0f, 0.0f);
+
 		glfwSetInputMode(window, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);
 		if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 			viewChange.y -= m_dx * ROT_SPEED / MOUSE_RES;
