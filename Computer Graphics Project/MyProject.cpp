@@ -123,7 +123,7 @@ struct Camera {
 	}
 
 	glm::vec4 getViewDirection() {
-		return cameraDirection * glm::vec4(0, 0, 1, 1);
+		return cameraDirection * glm::vec4(0, 0, -1, 1);
 	}
 
 	Ray getRay() {
@@ -156,7 +156,7 @@ struct Player {
 		auto ds = (vectorProjection(vd, glm::vec3(1, 0, 0)) + vectorProjection(vd, glm::vec3(0, 0, 1))) 
 			* movementSpeed 
 			* dt;
-		move(-ds);
+		move(ds);
 	}
 
 	void backward(float dt) {
@@ -164,7 +164,7 @@ struct Player {
 		auto ds = (vectorProjection(vd, glm::vec3(1, 0, 0)) + vectorProjection(vd, glm::vec3(0, 0, 1)))
 			* movementSpeed
 			* dt;
-		move(ds);
+		move(-ds);
 	}
 
 	void left(float dt) {
@@ -448,7 +448,7 @@ struct Artwork {
 			if (intersection) {
 				glm::vec3 temp = *intersection - ray.origin;
 				distance = glm::length(temp);
-				return distance < 4.0 && glm::dot(temp, ray.direction) < 0;
+				return distance < 4.0 && glm::dot(temp, ray.direction) > 0;
 			}
 		}
 
@@ -726,7 +726,7 @@ struct Skybox {
 class MyProject : public BaseProject {
 	Player player;
 	std::list<Artwork> artworks;
-	Artwork* description = nullptr;//std::optional<Artwork> description;
+	Artwork* description = nullptr;
 	std::list<Sign> signs;
 	std::list<Sofa> sofas;
 	Circle pointer;
