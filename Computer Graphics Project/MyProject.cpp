@@ -484,7 +484,7 @@ struct Word3D {
 	PushConstantObject pco;
 
 	void init(DescriptorSetLayout *DSL, BaseProject *bs) {
-		model.init(bs, MODEL_PATH + "Sign.obj");
+		model.init(bs, MODEL_PATH + "museumName.obj");
 		texture.init(bs, TEXTURE_PATH + textureName);
 		descSet.init(bs, DSL, {
 			{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
