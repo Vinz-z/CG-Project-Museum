@@ -123,7 +123,7 @@ struct Camera {
 	}
 
 	glm::vec4 getViewDirection() {
-		return cameraDirection * glm::vec4(0, 0, -1, 1);
+		return cameraDirection * glm::normalize(glm::vec4(0, 0, -1, 1));
 	}
 
 	Ray getRay() {
@@ -180,7 +180,7 @@ struct Player {
 		auto ds = (vectorProjection(glm::vec3(vd), glm::vec3(1, 0, 0)) + vectorProjection(glm::vec3(vd), glm::vec3(0, 0, 1)))
 			* movementSpeed
 			* dt;
-		move(-ds);
+		move(ds);
 	}
 
 	void right(float dt) {
@@ -188,7 +188,7 @@ struct Player {
 		auto ds = (vectorProjection(glm::vec3(vd), glm::vec3(1, 0, 0)) + vectorProjection(glm::vec3(vd), glm::vec3(0, 0, 1)))
 			* movementSpeed
 			* dt;
-		move(ds);
+		move(-ds);
 	}
 
 	void moveHead(glm::vec3 deltaRotation) {
