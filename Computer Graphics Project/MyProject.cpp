@@ -460,6 +460,57 @@ struct Artwork {
 	}
 };
 
+struct Word3D {
+	std::string textureName;
+	std::vector<float> translate;
+	std::vector<float> rotate;
+	std::vector<float> scale;
+
+	Model model;
+	Texture texture;
+	DescriptorSet descSet;
+
+	PushConstantObject pco;
+
+	void init(DescriptorSetLayout *DSL, BaseProject *bs) {
+		model.init(bs, MODEL_PATH + "Sign.obj");
+		texture.init(bs, TEXTURE_PATH + textureName);
+		descSet.init(bs, DSL, {
+			{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+			{1, TEXTURE, 0, &texture}
+			});
+
+		pco.worldMat = glm::translate(glm::mat4(1), { translate[0], translate[1], translate[2] }) *
+			glm::rotate(glm::mat4(1), glm::radians(rotate[1]), glm::vec3(0, 1, 0)) *
+			glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
+			glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
+			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
+	}
+
+	void cleanup() {
+		descSet.cleanup();
+		texture.cleanup();
+		model.cleanup();
+	}
+
+	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
+		VkBuffer vertexBuffers[] = { model.vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, model.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+			pipeline.pipelineLayout, 1, 1, &descSet.descriptorSets[currentImage],
+			0, nullptr);
+
+		// push constant before drawing the picture
+		vkCmdPushConstants(commandBuffer, pipeline.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+			0, sizeof(PushConstantObject), &pco
+		);
+
+		// draw the picture
+		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+	}
+};
 struct Sofa {
 	std::string textureName;
 	std::vector<float> translate;
@@ -666,6 +717,13 @@ void from_json(const nlohmann::json& j, Sofa& o) {
 	j.at("rotate").get_to(o.rotate);
 }
 
+void from_json(const nlohmann::json& j, Word3D& o) {
+	j.at("src").get_to(o.textureName);
+	j.at("translate").get_to(o.translate);
+	j.at("scale").get_to(o.scale);
+	j.at("rotate").get_to(o.rotate);
+}
+
 struct Skybox {
 	Model model;
 	Texture texture;
@@ -734,6 +792,7 @@ class MyProject : public BaseProject {
 	std::list<Sign> signs;
 	std::list<Sofa> sofas;
 	Circle pointer;
+	Word3D museumName;
 
 	// time
 	std::chrono::time_point<std::chrono::steady_clock> startTime;
@@ -769,7 +828,7 @@ class MyProject : public BaseProject {
 		initialBackgroundColor = {0.0f, 0.0f, 0.0f, 1.0f};
 		
 		// Descriptor pool sizes  !!!! -> ????? sono cazzo giusti ?????
-		texturesInPool = 70;
+		texturesInPool = 71;
 		uniformBlocksInPool = texturesInPool + 1;
 		setsInPool = texturesInPool+2;
 	}
@@ -825,7 +884,9 @@ class MyProject : public BaseProject {
 		f_artworks >> j_artworks;
 	
 		pointer.init(&DSL_ubo, this, "white.png", 0.01f);
-
+		museumName = j_artworks["word3D"].get<Word3D>();
+		museumName.init(&DSL_ubo, this);
+		
 
 		for (auto& artwork : j_artworks["pictures"].get<std::vector<Artwork>>()) {
 			artwork.init(&DSL_ubo, this);
@@ -881,6 +942,7 @@ class MyProject : public BaseProject {
 		Island.cleanup();
 		skybox.cleanup();
 		pointer.cleanup();
+		museumName.cleanup();
 
 		for (Artwork& pic : artworks) {
 			pic.cleanup();
@@ -920,6 +982,8 @@ class MyProject : public BaseProject {
 		Floor.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Island.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 
+		museumName.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+
 		for (Artwork& pic : artworks) {
 			pic.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		}
@@ -943,7 +1007,6 @@ class MyProject : public BaseProject {
 		}
 
 		pointer.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
-
 	}
 
 	// Here is where you update the uniforms.
