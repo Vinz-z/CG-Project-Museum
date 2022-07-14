@@ -837,7 +837,7 @@ class MyProject : public BaseProject {
 		initialBackgroundColor = {0.0f, 0.0f, 0.0f, 1.0f};
 		
 		// Descriptor pool sizes  !!!! -> ????? sono cazzo giusti ?????
-		texturesInPool = 71;
+		texturesInPool = 72;
 		uniformBlocksInPool = texturesInPool + 1;
 		setsInPool = texturesInPool+2;
 	}
@@ -876,7 +876,7 @@ class MyProject : public BaseProject {
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
 			glm::scale(glm::mat4(1.0f), glm::vec3(2.2f, 1.5f, 2.2f));
 
-		Museum.init(&DSL_ubo, this, MODEL_PATH + "museumTri.obj", TEXTURE_PATH + "wall.jpg", temp);
+		Museum.init(&DSL_ubo, this, MODEL_PATH + "museumTri.obj", TEXTURE_PATH + "textureMuseum.png", temp);
 		
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
