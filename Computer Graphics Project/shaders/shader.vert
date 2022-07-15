@@ -3,8 +3,10 @@
 layout(set = 0, binding = 0) uniform GlobalUniformBufferObject {
 	mat4 view;
 	mat4 proj;
-	vec3 lightPos;
+	vec3 lightPos[10];
 	vec3 lightColor;
+	vec3 sunLightDir;
+	vec3 sunLightColor;
 	vec4 coneInOutDecayExp;
 } gubo;
 
@@ -14,6 +16,8 @@ layout(set = 1, binding = 0) uniform UniformBufferObject {
 
 layout(push_constant) uniform Push {
     mat4 wordMat;
+	vec2 reflectance;
+
 } push;
 
 layout(location = 0) in vec3 pos;
