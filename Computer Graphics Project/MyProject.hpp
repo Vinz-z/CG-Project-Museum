@@ -80,11 +80,6 @@ struct Vertex {
 		attributeDescriptions[2].location = 2;
 		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
 		attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-		attributeDescriptions[3].binding = 0;
-		attributeDescriptions[3].location = 3;
-		attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
-		attributeDescriptions[3].offset = offsetof(Vertex, reflectInfo);
 						
 		return attributeDescriptions;
 	}
@@ -92,7 +87,7 @@ struct Vertex {
 
 struct PushConstantObject {
 	alignas(16) glm::mat4 worldMat;
-	alignas(16) glm::vec2 reflectance; //First value indicates if need Specular, second value is the Specular Power;
+	alignas(16) float reflectance; //It is the Specular Power, it is equal to 0 if the model doesn't need specular reflection
 };
 
 // Lesson 13

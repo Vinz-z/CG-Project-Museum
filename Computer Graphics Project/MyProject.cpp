@@ -350,7 +350,7 @@ struct Artwork {
 	std::string collisionModel; // clickable area
 	std::string descrTextureName; // description image
 	Art type;
-	std::vector<float> reflectance;
+	float reflectance;
 
 	std::vector<float> translate;
 	std::vector<float> rotate;
@@ -381,8 +381,7 @@ struct Artwork {
 			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
 
 		//Specular values
-		pco.reflectance.x = reflectance[0];
-		pco.reflectance.y = reflectance[1];
+		pco.reflectance = reflectance;
 		
 
 		loadClickArea(MODEL_PATH + collisionModel);
@@ -498,7 +497,7 @@ struct Word3D {
 			glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
 			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
 
-		pco.reflectance = glm::vec2(0 , 0);
+		pco.reflectance = 0.0f;
 	}
 
 	void cleanup() {
@@ -554,7 +553,7 @@ struct Sofa {
 			glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
 			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
 
-		pco.reflectance = glm::vec2(1.0f, 8.0f);
+		pco.reflectance = 8.0f;
 
 		loadClickArea(MODEL_PATH + "sofaBoxCollider.obj");
 	}
@@ -646,7 +645,7 @@ struct Sign {
 			glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
 			glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
 			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
-		pco.reflectance = glm::vec2(0.0f, 0.0f);
+		pco.reflectance = 0.0f;
 	}
 
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
@@ -689,7 +688,7 @@ struct Environment {
 			{1, TEXTURE, 0, &texture}
 			});
 		pco.worldMat = position;
-		pco.reflectance = glm::vec2(0.0f , 0.0f);
+		pco.reflectance = 0.0f;
 	}
 
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {

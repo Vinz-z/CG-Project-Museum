@@ -16,7 +16,7 @@ layout(set = 1, binding = 0) uniform UniformBufferObject {
 
 layout(push_constant) uniform Push {
     mat4 wordMat;
-	vec2 reflectance;
+	float reflectance;
 
 } push;
 
