@@ -50,6 +50,7 @@ struct Vertex {
 	glm::vec3 pos;
 	glm::vec3 norm;
 	glm::vec2 texCoord;
+	glm::vec2 reflectInfo;
 	
 	static VkVertexInputBindingDescription getBindingDescription() {
 		VkVertexInputBindingDescription bindingDescription{};
@@ -79,6 +80,11 @@ struct Vertex {
 		attributeDescriptions[2].location = 2;
 		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
 		attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+
+		attributeDescriptions[3].binding = 0;
+		attributeDescriptions[3].location = 3;
+		attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
+		attributeDescriptions[3].offset = offsetof(Vertex, reflectInfo);
 						
 		return attributeDescriptions;
 	}
@@ -86,6 +92,7 @@ struct Vertex {
 
 struct PushConstantObject {
 	alignas(16) glm::mat4 worldMat;
+	alignas(16) glm::vec2 reflectance; //First value indicates if need Specular, second value is the Specular Power;
 };
 
 // Lesson 13

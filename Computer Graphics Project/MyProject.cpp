@@ -350,6 +350,7 @@ struct Artwork {
 	std::string collisionModel; // clickable area
 	std::string descrTextureName; // description image
 	Art type;
+	std::vector<float> reflectance;
 
 	std::vector<float> translate;
 	std::vector<float> rotate;
@@ -378,6 +379,11 @@ struct Artwork {
 			glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
 			glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
 			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
+
+		//Specular values
+		pco.reflectance.x = reflectance[0];
+		pco.reflectance.y = reflectance[1];
+		
 
 		loadClickArea(MODEL_PATH + collisionModel);
 		descriptionSquare.init(ubo_dsl, bp, "descriptions/" + descrTextureName);
@@ -492,6 +498,8 @@ struct Word3D {
 			glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
 			glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
 			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
+
+		pco.reflectance = glm::vec2(0 , 0);
 	}
 
 	void cleanup() {
@@ -546,6 +554,8 @@ struct Sofa {
 			glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
 			glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
 			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
+
+		pco.reflectance = glm::vec2(1.0f, 8.0f);
 
 		loadClickArea(MODEL_PATH + "sofaBoxCollider.obj");
 	}
@@ -637,6 +647,7 @@ struct Sign {
 			glm::rotate(glm::mat4(1), glm::radians(rotate[0]), glm::vec3(1, 0, 0)) *
 			glm::rotate(glm::mat4(1), glm::radians(rotate[2]), glm::vec3(0, 0, 1)) *
 			glm::scale(glm::mat4(1), { scale[0], scale[1], scale[2] });
+		pco.reflectance = glm::vec2(0.0f, 0.0f);
 	}
 
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
@@ -679,6 +690,7 @@ struct Environment {
 			{1, TEXTURE, 0, &texture}
 			});
 		pco.worldMat = position;
+		pco.reflectance = glm::vec2(0.0f , 0.0f);
 	}
 
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
@@ -706,6 +718,7 @@ void from_json(const nlohmann::json& j, Artwork& o) {
 	j.at("clickArea").get_to(o.collisionModel);
 	j.at("description").get_to(o.descrTextureName);
 	j.at("type").get_to(o.type);
+	j.at("reflectance").get_to(o.reflectance);
 
 	j.at("translate").get_to(o.translate);
 	j.at("scale").get_to(o.scale);
@@ -816,12 +829,12 @@ class MyProject : public BaseProject {
 	// Descriptor Layouts [what will be passed to the shaders]
 	DescriptorSetLayout DSL_gubo;
 	DescriptorSetLayout DSL_ubo;
+
 	DescriptorSet DS_global; // used for cam and light points
 
 	// Pipelines
 	Pipeline museumPipeline;
 	Pipeline textPipeline;
-	Pipeline statuePipeline;
 
 	Environment Museum;
 	Environment Floor;
@@ -848,14 +861,10 @@ class MyProject : public BaseProject {
 	void localInit() {
 		glm::mat4 temp = glm::mat4(1.0f);
 
+		//----------DSL------------//
 		DSL_gubo.init(this, {
 			{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS},
 			});
-
-		DS_global.init(this, &DSL_gubo, {
-			{0, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
-			});
-
 
 		// Descriptor Layouts [what will be passed to the shaders]
 		DSL_ubo.init(this, {
@@ -865,14 +874,19 @@ class MyProject : public BaseProject {
 			// third  element : the pipeline stage where it will be used
 			{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
 			{1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
-		});		
+		});	
+
+		//----------------------------//
+
+		DS_global.init(this, &DSL_gubo, {
+			{0, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
+			});
 
 		// Pipelines [Shader couples]
 		// The last array, is a vector of pointer to the layouts of the sets that will
 		// be used in this pipeline. The first element will be set 0, and so on..
 		museumPipeline.init(this, "shaders/vert.spv", "shaders/frag.spv", {&DSL_gubo, &DSL_ubo});
 		textPipeline.init(this, "shaders/textVert.spv", "shaders/textFrag.spv", {&DSL_ubo});
-		statuePipeline.init(this, "shaders/statueVert.spv", "shaders/statueFrag.spv", { &DSL_gubo, &DSL_ubo });
 
 		temp = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.5f, 0.0f)) *
 			glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f))*
@@ -975,7 +989,6 @@ class MyProject : public BaseProject {
 		DSL_ubo.cleanup();
 		museumPipeline.cleanup();
 		textPipeline.cleanup();
-		statuePipeline.cleanup();
 	}
 	
 	// Here it is the creation of the command buffer:
@@ -999,13 +1012,12 @@ class MyProject : public BaseProject {
 
 		Museum.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 		Island.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
+		Floor.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 
 		museumName.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
 
 		for (Artwork& pic : artworks) {
-			if (pic.type == PICTURE) {
 				pic.populateCommandBuffer(commandBuffer, currentImage, museumPipeline);
-			}
 		}
 
 		for (Sign& s : signs) {
@@ -1028,24 +1040,7 @@ class MyProject : public BaseProject {
 
 		pointer.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
 
-
-		//Statues
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			statuePipeline.graphicsPipeline);
-
-		vkCmdBindDescriptorSets(commandBuffer,
-			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			statuePipeline.pipelineLayout, 0, 1, &DS_global.descriptorSets[currentImage],
-			0, nullptr);
-
-
-		for (Artwork& pic : artworks) {
-			if (pic.type == STATUE) {
-				pic.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
-			}
-		}
-
-		Floor.populateCommandBuffer(commandBuffer, currentImage, statuePipeline);
+		
 
 	}
 
@@ -1151,7 +1146,7 @@ class MyProject : public BaseProject {
 		gubo.lightPos[7] = glm::vec3(5.0f, 2.0f, -1.0f);
 		gubo.lightPos[8] = glm::vec3(0.5f, 2.38f, 16.0f);
 		gubo.lightPos[9] = glm::vec3(3.0f, 2.38f, 16.0f);
-		gubo.lightColor = glm::vec3(1.0f, 0.96f, 0.934f);
+		gubo.lightColor = glm::vec3(1.0f, 0.96f, 0.934f) * 1.3f;
 		gubo.sunLightDir = glm::vec3(cos(glm::radians(time * 5)), sin(glm::radians(time * 5)), 0.0f); //sun (direct) light
 		gubo.sunLightColor = glm::vec3(0.99f,0.9f,0.44f) * glm::clamp(sin(glm::radians(time * 5)), 0.0f, 1.0f);
 		gubo.coneInOutDecayExp = glm::vec2(0.5f, 1.5f);

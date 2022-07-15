@@ -18,6 +18,11 @@ layout(set = 0, binding = 0) uniform GlobalUniformBufferObject {
 	vec2 coneInOutDecayExp;
 } gubo;
 
+layout(push_constant) uniform Push {
+    mat4 wordMat;
+	vec2 reflectance;
+} push;
+
 vec3 point_light_dir(vec3 lightPos ,vec3 pos) {
 	// Point light direction
 	return normalize(lightPos - pos);
@@ -45,12 +50,18 @@ vec4 createPointLight(vec3 lightPos, vec3 pos, vec3 N, vec3 V, vec3 diffColor, f
 	vec3 lightColor = gubo.lightColor * pow(gubo.coneInOutDecayExp.x / length(lightPos - pos), gubo.coneInOutDecayExp.y);
 	vec3 R = -reflect(lightDir, N);
 	vec3 lambertDiffuse = diffColor * max(dot(N, lightDir), 0.0f);
-	vec3 phongSpecular = vec3(pow(max(dot(R,V),0.0f), specPower));
+	vec3 phongSpecular;
 
 	//vec3 ambient  = (vec3(0.1f,0.1f, 0.1f) * (1.0f + N.y) + vec3(0.0f,0.0f, 0.1f) * (1.0f - N.y)) * diffColor;
 	vec3 ambient = vec3(0.4f,0.4f,0.4f) * diffColor;
 
-	vec4 pointLight = vec4((lambertDiffuse + ambient) * lightColor, 1.0f);
+	if (push.reflectance.x != 0){
+		phongSpecular = vec3(pow(max(dot(R,V),0.0f), specPower));
+	} else {
+		phongSpecular = vec3(0.0f, 0.0f, 0.0f);
+	}
+
+	vec4 pointLight = vec4((lambertDiffuse + ambient + phongSpecular) * lightColor, 1.0f);
 	return pointLight;
 }
 
@@ -60,11 +71,17 @@ vec4 createSunLight(vec3 N, vec3 V, vec3 diffColor, float specPower){
 	vec3 R = -reflect(lightDir, N);
 	vec3 lambertDiffuse = diffColor * max(dot(N, lightDir), 0.0f);
 	vec3 ONDiffuse = Oren_Nayar_Diffuse(lightDir, N, V, lightColor, 0.0f);
-	vec3 phongSpecular = vec3(pow(max(dot(R,V),0.0f), specPower));
+	vec3 phongSpecular;
 
 	vec3 ambient = vec3(0.4f,0.4f,0.4f) * diffColor;
 
-	vec4 pointLight = vec4((lambertDiffuse + ambient) * lightColor, 1.0f);
+	if (push.reflectance.x != 0){
+		phongSpecular = vec3(pow(max(dot(R,V),0.0f), specPower));
+	} else {
+		phongSpecular = vec3(0.0f, 0.0f, 0.0f);
+	}
+
+	vec4 pointLight = vec4((lambertDiffuse + ambient + phongSpecular) * lightColor, 1.0f);
 	return pointLight;
 }
 
@@ -72,7 +89,7 @@ vec4 createSunLight(vec3 N, vec3 V, vec3 diffColor, float specPower){
 
 void main() {
 	const vec3  diffColor = texture(texSampler, fragTexCoord).rgb;
-	const float specPower = 64.0f;
+	float specPower = push.reflectance.y;
 	vec3 N = normalize(fragNorm);
 	vec3 V = normalize((gubo.view[3]).xyz - fragPos);
 	/*--------------------------------------------------------------
