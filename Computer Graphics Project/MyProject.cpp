@@ -276,7 +276,7 @@ struct Circle {
 	}
 };
 
-struct Square {
+struct ArtDescription {
 	Model2D model;
 	Texture texture;
 	DescriptorSet descSet;
@@ -295,13 +295,13 @@ struct Square {
 		std::vector<Vertex> ver;
 		std::vector<uint32_t> index;
 
-		ver.push_back(Vertex{ {-0.7f, -0.7f, 0.0f}, {0, 0, 1}, {1, 0} }); index.push_back(0);
-		ver.push_back(Vertex{ {0.7f, -0.7f, 0.0f}, {0, 0, 1}, {1, 1} }); index.push_back(1);
-		ver.push_back(Vertex{ {-0.7f, 0.7f, 0.0f}, {0, 0, 1}, {0, 0} }); index.push_back(2);
+		ver.push_back(Vertex{ {-0.7f, -0.7f, 0.0f}, {0, 0, 1}, {0, 0} }); index.push_back(0);
+		ver.push_back(Vertex{ {0.7f, -0.7f, 0.0f}, {0, 0, 1}, {1, 0} }); index.push_back(1);
+		ver.push_back(Vertex{ {-0.7f, 0.7f, 0.0f}, {0, 0, 1}, {0, 1} }); index.push_back(2);
 
-		ver.push_back(Vertex{ {0.7f, -0.7f, 0.0f}, {0, 0, 1}, {1, 1} }); index.push_back(3);
-		ver.push_back(Vertex{ {0.7f, 0.7f, 0.0f}, {0, 0, 1}, {0, 1} }); index.push_back(4);
-		ver.push_back(Vertex{ {-0.7f, 0.7f, 0.0f}, {0, 0, 1}, {0, 0} }); index.push_back(5);
+		ver.push_back(Vertex{ {0.7f, -0.7f, 0.0f}, {0, 0, 1}, {1, 0} }); index.push_back(3);
+		ver.push_back(Vertex{ {0.7f, 0.7f, 0.0f}, {0, 0, 1}, {1, 1} }); index.push_back(4);
+		ver.push_back(Vertex{ {-0.7f, 0.7f, 0.0f}, {0, 0, 1}, {0, 1} }); index.push_back(5);
 
 		model.init(bp, ver, index);
 		texture.init(bp, TEXTURE_PATH + textureString);
@@ -361,7 +361,7 @@ struct Artwork {
 	Model model;
 	Texture texture;
 	DescriptorSet descSet;
-	Square descriptionSquare;
+	ArtDescription description;
 	PushConstantObject pco;
 
 	bool descriptionVisible = false;
@@ -386,7 +386,7 @@ struct Artwork {
 		
 
 		loadClickArea(MODEL_PATH + collisionModel);
-		descriptionSquare.init(ubo_dsl, bp, "descriptions/" + descrTextureName);
+		description.init(ubo_dsl, bp, "descriptions/" + descrTextureName);
 	}
 
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage, Pipeline pipeline) {
@@ -412,7 +412,7 @@ struct Artwork {
 		descSet.cleanup();
 		texture.cleanup();
 		model.cleanup();
-		descriptionSquare.cleanup();
+		description.cleanup();
 	}
 
 	void loadClickArea(std::string file) {
@@ -447,12 +447,11 @@ struct Artwork {
 	}
 
 	void handleClick() {
-		LOG("handling click for " << textureName)
-		descriptionSquare.setVisible();
+		description.setVisible();
 	}
 
 	void hideDescription() {
-		descriptionSquare.setHidden();
+		description.setHidden();
 	}
 
 	void addTriangle(Triangle t) {
@@ -952,7 +951,7 @@ class MyProject : public BaseProject {
 		skybox.init(this, &DSL_gubo, &DSL_ubo);
 
 		// init the player with the right aspect ratio of the image
-		player.init(swapChainExtent.width / (float)swapChainExtent.height, { -0.2f, 0.95f, 19.0f });
+		player.init(swapChainExtent.width / (float)swapChainExtent.height, { -0.2f, 1.1f, 19.0f });
 
 		// time initialization
 		startTime = std::chrono::high_resolution_clock::now();
@@ -1035,7 +1034,7 @@ class MyProject : public BaseProject {
 			textPipeline.graphicsPipeline);
 
 		for (Artwork& piece : artworks) {
-			piece.descriptionSquare.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
+			piece.description.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
 		}
 
 		pointer.populateCommandBuffer(commandBuffer, currentImage, textPipeline);
@@ -1102,13 +1101,11 @@ class MyProject : public BaseProject {
 		}
 
 		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
-			LOG("-------------------------------------------------------------------------")
 			float distance = -1;
 			float minDistance = std::numeric_limits<float>::infinity();
 			description = nullptr;
 
 			for (Artwork& piece : artworks) {
-				LOG(distance << " "  << minDistance << " " << piece.textureName)
 				if (piece.isClicked(player.camera.getRay(), distance)) {
 					if (distance < minDistance) {
 						description = &piece;
@@ -1149,7 +1146,7 @@ class MyProject : public BaseProject {
 		gubo.lightPos[10] = glm::vec3(3.25f, 2.38f, 16.75f);
 		gubo.lightColor = glm::vec3(1.0f, 0.96f, 0.934f);
 		gubo.sunLightDir = glm::vec3(cos(glm::radians(time * 5)), sin(glm::radians(time * 5)), 0.0f); //sun (direct) light
-		gubo.sunLightColor = glm::vec3(0.99f,0.9f,0.44f) * glm::clamp(sin(glm::radians(time * 5)), 0.0f, 1.0f);
+		gubo.sunLightColor = 1.3f * glm::vec3(0.99f,0.9f,0.44f) * glm::clamp(sin(glm::radians(time * 5)), 0.0f, 1.0f);
 		gubo.coneInOutDecayExp = glm::vec2(0.5f, 1.5f);
 
 		// gubo
@@ -1158,7 +1155,7 @@ class MyProject : public BaseProject {
 		vkUnmapMemory(device, DS_global.uniformBuffersMemory[0][currentImage]);
 		
 		for (Artwork& piece : artworks) {
-			piece.descriptionSquare.updateUbo(currentImage, device);
+			piece.description.updateUbo(currentImage, device);
 		}
 
 		pointer.updateUbo(currentImage, device);
