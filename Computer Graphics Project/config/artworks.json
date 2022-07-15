@@ -9,7 +9,7 @@
             "description": "DanceDesc.png",
             "clickArea": "planePicture.obj",
             "type": 0,
-            "reflectance": [1.0,8.0]
+            "reflectance": [0,0]
         },{
             "src": "Donna_Cappello.png",
             "model": "pictures.obj",
@@ -19,7 +19,7 @@
             "description": "DonnaCappelloDesc.png",
             "clickArea": "planePicture.obj",
             "type": 0,
-            "reflectance": [0.0,0.0]
+            "reflectance": [0,0]
         },
         {
             "src": "starringNight.png",
