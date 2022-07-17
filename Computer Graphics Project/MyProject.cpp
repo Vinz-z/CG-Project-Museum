@@ -61,10 +61,10 @@ struct Triangle {
 		norm = glm::cross(AB, AC);
 	}
 
-	std::optional<glm::vec3> lineIntersectInside(Ray ray) {
+	std::optional<glm::vec3> rayIntersection(Ray ray) {
 		float d = glm::dot(norm, A);
 		float perp = glm::dot(ray.direction, norm);
-		if (perp == 0) return {};
+		if (perp == 0) return std::nullopt;
 		float t = (d - glm::dot(norm, ray.origin)) / perp;
 
 		glm::vec3 intersection = ray.origin + (ray.direction * t);
@@ -79,7 +79,7 @@ struct Triangle {
 			return intersection;
 		}
 
-		return {};
+		return std::nullopt;
 	}
 
 	void print() {
@@ -155,8 +155,7 @@ struct Player {
 	const float movementSpeed = 3.0f;
 
 	void init(float aspectRatio, glm::vec3 initPos) {
-		position = initPos;
-		camera.init(glm::vec3(0.0f, 0.0f, 0.0f), position, 0.1f, 200.0f, 70.0f, aspectRatio);
+		camera.init(glm::vec3(0.0f, 0.0f, 0.0f), initPos, 0.1f, 200.0f, 70.0f, aspectRatio);
 	}
 
 	void forward(float dt) {
@@ -199,17 +198,22 @@ struct Player {
 		boundaries.push_front(t);
 	}
 
-private:
-	glm::vec3 position;
+	glm::vec3 getPosition() {
+		return camera.getCamPos();
+	}
 
+private:
 	void move(glm::vec3 dir) {
 		// check for each boundary if there is a collision -> if yes then cant move in this direction
 		for (Triangle& t : boundaries) {
-			auto intersec = t.lineIntersectInside(Ray{ position, dir });
-			if (intersec && glm::length(*intersec - position) <= (glm::length(dir) + 0.5f)) { return; }
+			auto intersec = t.rayIntersection(Ray{ camera.getCamPos(), dir });
+			if (
+				intersec && 
+				glm::length(*intersec - camera.getCamPos()) <= (glm::length(dir) + 0.5f) && // intersection 
+				glm::dot(*intersec - camera.getCamPos(), dir) > 0 // intersection same direction of the movement
+			) { return; }
 		}
 
-		position += dir;
 		camera.move(dir);
 	}
 };
@@ -459,7 +463,7 @@ struct Artwork {
 
 	bool isClicked(Ray ray, float& distance) {
 		for (Triangle& t : body) {
-			auto intersection = t.lineIntersectInside(ray);
+			auto intersection = t.rayIntersection(ray);
 			if (intersection) {
 				glm::vec3 temp = *intersection - ray.origin;
 				distance = glm::length(temp);
