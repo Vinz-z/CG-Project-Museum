@@ -33,18 +33,6 @@ vec3 point_light_color(vec3 lightPos, vec3 pos) {
 	return gubo.lightColor * pow(gubo.coneInOutDecayExp.x/length(lightPos - pos),gubo.coneInOutDecayExp.y);
 }
 
-vec3 Oren_Nayar_Diffuse(vec3 LightDirection, vec3 N, vec3 V, vec3 MainColor, float sigma) {
-	float alpha = max(acos(dot(LightDirection,N)),acos(dot(V,N)));
-	float beta = min(acos(dot(LightDirection,N)),acos(dot(V,N)));
-	float A = 1 - 0.5 * ((sigma*sigma) / ((sigma*sigma)+0.33));
-	float B = 0.45 * ((sigma*sigma)/((sigma*sigma)+0.09));
-	vec3 v_i = normalize(LightDirection - (dot(LightDirection,N)*N));
-	vec3 v_r = normalize(V - (dot(V,N)*N));
-	float G = max(0,dot(v_i,v_r));
-	vec3 OrenL = MainColor * clamp(dot(LightDirection,N),0,1);
-	return OrenL * (A + B*G*sin(alpha)*tan(beta));
-}
-
 vec4 createPointLight(vec3 lightPos, vec3 pos, vec3 N, vec3 V, vec3 diffColor, float specPower){
 	vec3 lightDir = normalize(lightPos - pos);
 	vec3 lightColor = gubo.lightColor * pow(gubo.coneInOutDecayExp.x / length(lightPos - pos), gubo.coneInOutDecayExp.y);
@@ -70,7 +58,6 @@ vec4 createSunLight(vec3 N, vec3 V, vec3 diffColor, float specPower){
 	vec3 lightColor = gubo.sunLightColor;
 	vec3 R = -reflect(lightDir, N);
 	vec3 lambertDiffuse = diffColor * max(dot(N, lightDir), 0.0f);
-	vec3 ONDiffuse = Oren_Nayar_Diffuse(lightDir, N, V, lightColor, 0.0f);
 	vec3 phongSpecular;
 
 	vec3 ambient = vec3(0.4f,0.4f,0.4f) * diffColor;
