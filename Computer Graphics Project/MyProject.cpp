@@ -1108,10 +1108,6 @@ class MyProject : public BaseProject {
 			player.forward(deltaT);
 		}
 		
-		/*
-		if (player.camera.getCamPos().x < -2.0f || player.camera.getCamPos().z > 20.0f || player.camera.getCamPos().x > 7.0f) {
-			player.camera.move(oldPos);
-		}*/
 		
 
 		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) {
@@ -1155,9 +1151,9 @@ class MyProject : public BaseProject {
 		gubo.lightPos[5] = glm::vec3(5.0f, 2.0f, 8.4f);
 		gubo.lightPos[6] = glm::vec3(5.0f, 2.0f, 3.7f);
 		gubo.lightPos[7] = glm::vec3(5.0f, 2.0f, -1.0f);
-		gubo.lightPos[8] = glm::vec3(0.25f, 2.38f, 16.75f) * 200.0f;
-		gubo.lightPos[9] = glm::vec3(1.75f, 2.38f, 16.75f) * 200.0f;
-		gubo.lightPos[10] = glm::vec3(3.25f, 2.38f, 16.75f) * 200.0f;
+		gubo.lightPos[8] = glm::vec3(0.25f, 2.38f, 16.75f);
+		gubo.lightPos[9] = glm::vec3(1.75f, 2.38f, 16.75f);
+		gubo.lightPos[10] = glm::vec3(3.25f, 2.38f, 16.75f);
 		gubo.lightColor = 1.2f * glm::vec3( 1.0f, 0.96f, 0.934f);
 		gubo.sunLightDir = glm::vec3(cos(glm::radians(time * 5)), sin(glm::radians(time * 5)), 0.0f); //sun (direct) light
 		gubo.sunLightColor = 1.3f * glm::vec3(0.99f,0.9f,0.44f) * glm::clamp(sin(glm::radians(time * 5)), 0.0f, 1.0f);
