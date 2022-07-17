@@ -112,6 +112,10 @@ struct Camera {
 
 	void move(glm::vec3 ds) {
 		position += ds;
+		if (position.x < -2.0f || position.z > 21.0f || position.x > 7.0f || position.z < -4.0f) {
+			position -= ds;
+		}
+		
 	}
 
 	glm::mat4 getCameraMatrix() {
