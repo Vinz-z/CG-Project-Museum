@@ -5,6 +5,7 @@ layout(set = 1, binding = 1) uniform sampler2D texSampler;
 layout(location = 0) in vec3 fragPos;
 layout(location = 1) in vec3 fragNorm;
 layout(location = 2) in vec2 fragTexCoord;
+layout(location = 3) in float reflectance;
 
 layout(location = 0) out vec4 outColor;
 
@@ -17,11 +18,6 @@ layout(set = 0, binding = 0) uniform GlobalUniformBufferObject {
 	vec3 sunLightColor;
 	vec2 coneInOutDecayExp;
 } gubo;
-
-layout(push_constant) uniform Push {
-    mat4 wordMat;
-	float reflectance;
-} push;
 
 vec3 point_light_dir(vec3 lightPos ,vec3 pos) {
 	// Point light direction
@@ -43,7 +39,7 @@ vec4 createPointLight(vec3 lightPos, vec3 pos, vec3 N, vec3 V, vec3 diffColor, f
 	//vec3 ambient  = (vec3(0.1f,0.1f, 0.1f) * (1.0f + N.y) + vec3(0.0f,0.0f, 0.1f) * (1.0f - N.y)) * diffColor;
 	vec3 ambient = vec3(0.4f,0.4f,0.4f) * diffColor;
 
-	if (push.reflectance != 0){
+	if (specPower != 0){
 		phongSpecular = vec3(pow(max(dot(R,V),0.0f), specPower));
 	} else {
 		phongSpecular = vec3(0.0f, 0.0f, 0.0f);
@@ -62,7 +58,7 @@ vec4 createSunLight(vec3 N, vec3 V, vec3 diffColor, float specPower){
 
 	vec3 ambient = vec3(0.4f,0.4f,0.4f) * diffColor;
 
-	if (push.reflectance != 0){
+	if (specPower != 0){
 		phongSpecular = vec3(pow(max(dot(R,V),0.0f), specPower));
 	} else {
 		phongSpecular = vec3(0.0f, 0.0f, 0.0f);
@@ -76,7 +72,7 @@ vec4 createSunLight(vec3 N, vec3 V, vec3 diffColor, float specPower){
 
 void main() {
 	const vec3  diffColor = texture(texSampler, fragTexCoord).rgb;
-	float specPower = push.reflectance;
+	float specPower = reflectance;
 	vec3 N = normalize(fragNorm);
 	vec3 V = normalize((gubo.view[3]).xyz - fragPos);
 	/*--------------------------------------------------------------
