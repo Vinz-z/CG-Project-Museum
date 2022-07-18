@@ -50,7 +50,7 @@ struct Vertex {
 	glm::vec3 pos;
 	glm::vec3 norm;
 	glm::vec2 texCoord;
-	glm::vec2 reflectance;
+	float reflectance;
 	
 	static VkVertexInputBindingDescription getBindingDescription() {
 		VkVertexInputBindingDescription bindingDescription{};
