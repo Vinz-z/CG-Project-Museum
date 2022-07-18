@@ -50,7 +50,6 @@ struct Vertex {
 	glm::vec3 pos;
 	glm::vec3 norm;
 	glm::vec2 texCoord;
-	float reflectance;
 	
 	static VkVertexInputBindingDescription getBindingDescription() {
 		VkVertexInputBindingDescription bindingDescription{};
@@ -81,11 +80,6 @@ struct Vertex {
 		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
 		attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
 
-		attributeDescriptions[3].binding = 0;
-		attributeDescriptions[3].location = 3;
-		attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
-		attributeDescriptions[3].offset = offsetof(Vertex, reflectance);
-						
 		return attributeDescriptions;
 	}
 };

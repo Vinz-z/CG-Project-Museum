@@ -836,7 +836,7 @@ class MyProject : public BaseProject {
 	DescriptorSetLayout DSL_gubo;
 	DescriptorSetLayout DSL_ubo;
 
-	DescriptorSet DS_global; // used for cam and light points
+	DescriptorSet DS_global; // used for cam and lights
 
 	// Pipelines
 	Pipeline museumPipeline;

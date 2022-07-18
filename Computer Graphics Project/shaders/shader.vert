@@ -15,7 +15,7 @@ layout(set = 1, binding = 0) uniform UniformBufferObject {
 } ubo;
 
 layout(push_constant) uniform Push {
-    mat4 wordMat;
+    mat4 worldMat;
 	float reflectance;
 } push;
 
@@ -30,9 +30,9 @@ layout(location = 3) out float reflectance;
 
 
 void main() {
-	gl_Position = gubo.proj * gubo.view * push.wordMat * vec4(pos, 1.0);
-	fragPos = (push.wordMat* vec4(pos,  1.0)).xyz;
-	fragNorm = (push.wordMat * vec4(norm, 0.0)).xyz;
+	gl_Position = gubo.proj * gubo.view * push.worldMat * vec4(pos, 1.0);
+	fragPos = (push.worldMat* vec4(pos,  1.0)).xyz;
+	fragNorm = (push.worldMat * vec4(norm, 0.0)).xyz;
 	fragTexCoord = texCoord;
 	reflectance = push.reflectance;
 }

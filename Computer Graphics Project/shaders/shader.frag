@@ -36,7 +36,6 @@ vec4 createPointLight(vec3 lightPos, vec3 pos, vec3 N, vec3 V, vec3 diffColor, f
 	vec3 lambertDiffuse = diffColor * max(dot(N, lightDir), 0.0f);
 	vec3 phongSpecular;
 
-	//vec3 ambient  = (vec3(0.1f,0.1f, 0.1f) * (1.0f + N.y) + vec3(0.0f,0.0f, 0.1f) * (1.0f - N.y)) * diffColor;
 	vec3 ambient = vec3(0.4f,0.4f,0.4f) * diffColor;
 
 	if (specPower != 0){
@@ -64,8 +63,8 @@ vec4 createSunLight(vec3 N, vec3 V, vec3 diffColor, float specPower){
 		phongSpecular = vec3(0.0f, 0.0f, 0.0f);
 	}
 
-	vec4 pointLight = vec4((lambertDiffuse + ambient + phongSpecular) * lightColor, 1.0f);
-	return pointLight;
+	vec4 sunLight = vec4((lambertDiffuse + ambient + phongSpecular) * lightColor, 1.0f);
+	return sunLight;
 }
 
 
@@ -75,22 +74,7 @@ void main() {
 	float specPower = reflectance;
 	vec3 N = normalize(fragNorm);
 	vec3 V = normalize((gubo.view[3]).xyz - fragPos);
-	/*--------------------------------------------------------------
-	//const vec3  L = vec3(-0.4830f, 0.8365f, -0.2588f);
-	const vec3  L = vec3(0.0f, -0.5f, 0.0f);
-	//const vec3 topColor = vec3(0.325f,0.847f,0.9843f);
-	//const vec3 bottomColor = vec3(0.384f, 0.580f, 0.3764f);
-
-	const vec3 topColor = vec3(0.1f,0.1f,0.1f);
-	const vec3 bottomColor = vec3(0.1f, 0.1f, 0.1f);
-
-	// Hemispheric ambient
-	vec3 HemiDir = vec3(0.0f, 1.0f, 0.0f);
-	vec3 l_A = (((dot(N,HemiDir)+1.0f)/2.0f)*bottomColor) + (((1.0f-dot(N,HemiDir))/2.0f)*topColor);
-	vec3 ambient  = (vec3(0.1f,0.1f, 0.1f) * (1.0f + N.y) + vec3(0.0f,0.0f, 0.1f) * (1.0f - N.y)) * diffColor;
-	//vec3 ambient = (vec3(N.y + 1.0f) * diffuse) + l_A*vec3(0.1f, 0.1f, 0.1f);
-	*/
-	//outColor = vec4(clamp(ambient + diffuse + specular, vec3(0.0f), vec3(1.0f)), 1.0f);
+	
 	outColor = createPointLight(gubo.lightPos[0], fragPos, N, V, diffColor, specPower);
 	for (int i = 1; i < (gubo.lightPos).length(); i++){
 		outColor = outColor + createPointLight(gubo.lightPos[i], fragPos, N, V, diffColor, specPower);
