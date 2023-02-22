@@ -4,7 +4,7 @@ Project for the Computer Graphics course for the academic year 2021/2022 at Poli
 
 ## Getting Started
 
-To run the program, make sure you have properly installed Vulkan on your computer: https://vulkan-tutorial.com/Development_environment
+To run the project, make sure you have properly installed Vulkan on your computer: https://vulkan-tutorial.com/Development_environment
 
 ## Authors
 - [Vincenzo Curreri](https://github.com/Vinz-z) :pizza:
