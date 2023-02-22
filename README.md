@@ -9,7 +9,7 @@ To run the program, make sure you have properly installed Vulkan on your compute
 ## Authors
 - [Vincenzo Curreri](https://github.com/Vinz-z) :pizza:
 - [Fabio Chini](https://github.com/chinifabio) :cat2:
-- [Giovanni Caleffi](https://github.com/giovannicaleffi) 
+- [Giovanni Caleffi](https://github.com/giovannicaleffi) :musical_score:
 
 ## Screenshots
 | | |
